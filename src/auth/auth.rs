@@ -1,10 +1,9 @@
-use colored::Colorize;
-
 use super::base;
 use super::base::AuthProvider;
 
 use crate::lang;
 use crate::config::runtime_config;
+use crate::utils::print_error_and_exit;
 
 pub async fn auth_and_save(config: &mut runtime_config::Config) -> bool {
     let mut online = true;
@@ -17,7 +16,7 @@ pub async fn auth_and_save(config: &mut runtime_config::Config) -> bool {
             token = config.token.clone().unwrap();
         } else {
             if tried_auth {
-                panic!("{}", lang::get_loc(&config.lang).error_during_auth.red());
+                print_error_and_exit(lang::get_loc(&config.lang).error_during_auth);
             }
             tried_auth = true;
 
@@ -28,7 +27,7 @@ pub async fn auth_and_save(config: &mut runtime_config::Config) -> bool {
                         online = false;
                         break;
                     } else {
-                        panic!("{}", lang::get_loc(&config.lang).error_during_auth.red());
+                        print_error_and_exit(lang::get_loc(&config.lang).error_during_auth);
                     }
                 }
             }
@@ -51,14 +50,14 @@ pub async fn auth_and_save(config: &mut runtime_config::Config) -> bool {
                         continue;
                     }
                 }
-                panic!("{}: {:?}", lang::get_loc(&config.lang).error_during_user_info.red(), e);
+                print_error_and_exit(format!("{}: {:?}", lang::get_loc(&config.lang).error_during_user_info, e).as_str());
             }
         }
     }
 
     if !online {
         if config.user_info.is_none() {
-            panic!("{}", lang::get_loc(&config.lang).error_use_internet_for_first_connection.red());
+            print_error_and_exit(lang::get_loc(&config.lang).error_use_internet_for_first_connection);
         }
     }
 

@@ -24,3 +24,8 @@ pub fn get_fancy_progress_bar(size: u64, message: &'static str) -> indicatif::Pr
     bar.set_message(message);
     bar
 }
+
+pub fn print_error_and_exit(message: &str) -> ! {
+    println!("{}", message.red());
+    std::process::exit(1);
+}

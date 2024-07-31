@@ -9,21 +9,29 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::Semaphore;
 use tokio::sync::mpsc::UnboundedSender;
 
-use reqwest::Error as ReqwestError;
-use std::io::Error as IOError;
+pub fn get_files_in_dir(path: &PathBuf) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    if path.is_file() {
+        files.push(path.clone());
+    } else if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries.flatten() {
+            files.extend(get_files_in_dir(&entry.path()));
+        }
+    }
+    files
+}
 
 async fn hash_file(path: &Path) -> Result<String, std::io::Error> {
     let data = async_fs::read(path).await?;
     Ok(format!("{:x}", Sha1::digest(&data)))
 }
 
-pub async fn hash_files(files: Vec<String>, base_dir: &Path, tx: UnboundedSender<()>) -> HashMap<String, String> {
+pub async fn hash_files(files: impl Iterator<Item = PathBuf>, tx: UnboundedSender<()>) -> HashMap<PathBuf, String> {
     let semaphore = Arc::new(Semaphore::new(num_cpus::get()));
     let hashes = Arc::new(Mutex::new(HashMap::new()));
     let mut tasks = Vec::new();
 
-    for file in files {
-        let path = base_dir.join(&file);
+    for path in files {
         let semaphore = semaphore.clone();
         let hashes = hashes.clone();
         let thread_tx = tx.clone();
@@ -32,7 +40,7 @@ pub async fn hash_files(files: Vec<String>, base_dir: &Path, tx: UnboundedSender
             let permit = semaphore.acquire_owned().await.unwrap();
             let hash = hash_file(&path).await.unwrap();
             let mut hashes = hashes.lock().unwrap();
-            hashes.insert(file, hash);
+            hashes.insert(path, hash);
             thread_tx.send(()).unwrap();
             drop(permit);
         }));
@@ -43,51 +51,18 @@ pub async fn hash_files(files: Vec<String>, base_dir: &Path, tx: UnboundedSender
     hashes.unwrap()
 }
 
-pub fn get_files_in_dir(path: &Path, rel_to: &Path) -> Vec<String> {
-    let mut files = Vec::new();
-    if path.is_file() {
-        if let Ok(rel_path) = path.strip_prefix(rel_to) {
-            files.push(rel_path.to_string_lossy().replace("\\", "/"));
-        }
-    } else if let Ok(entries) = fs::read_dir(path) {
-        for entry in entries.flatten() {
-            if entry.path().is_dir() {
-                continue;
-            }
-            if let Ok(rel_path) = entry.path().strip_prefix(rel_to) {
-                files.push(rel_path.to_string_lossy().replace("\\", "/"));
-            }
-        }
-    }
-    files
-}
-
-#[derive(Debug)]
-enum DownloadError {
-    Reqwest(ReqwestError),
-    Io(IOError),
-}
-
-impl From<ReqwestError> for DownloadError {
-    fn from(err: ReqwestError) -> DownloadError {
-        DownloadError::Reqwest(err)
-    }
-}
-
-impl From<IOError> for DownloadError {
-    fn from(err: IOError) -> DownloadError {
-        DownloadError::Io(err)
-    }
-}
-
-async fn download_file(client: &Client, url: &str, path: &Path) -> Result<(), DownloadError> {
+async fn download_file(client: &Client, url: &str, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let response = client.get(url).send().await?.bytes().await?;
+
+    let parent_dir = path.parent().expect("Invalid file path");
+    async_fs::create_dir_all(parent_dir).await?;
     let mut file = async_fs::File::create(path).await?;
+
     file.write_all(&response).await?;
     Ok(())
 }
 
-pub async fn download_files(urls: Vec<String>, paths: Vec<PathBuf>, tx: UnboundedSender<()>) {
+pub async fn download_files(urls: impl Iterator<Item = String>, paths: impl Iterator<Item = PathBuf>, tx: UnboundedSender<()>) {
     const MAX_CONCURRENT_DOWNLOADS: usize = 10;
 
     let client = Client::new();
