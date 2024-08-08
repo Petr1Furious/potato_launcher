@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use super::build_config;
 use crate::{auth, constants, lang::Lang};
@@ -16,39 +17,42 @@ pub struct Config {
     pub lang: Lang,
 }
 
-fn get_data_dir(config: &Config) -> std::path::PathBuf {
+fn get_data_dir(config: &Config) -> PathBuf {
     let data_dir = match &config.data_dir {
         None => dirs::data_dir()
             .expect("Failed to get data directory")
             .join(build_config::get_launcher_name()),
 
-        Some(dir) => std::path::PathBuf::from(dir),
+        Some(dir) => PathBuf::from(dir),
     };
     data_dir
 }
 
-pub fn get_assets_dir(config: &Config) -> std::path::PathBuf {
+pub fn get_assets_dir(config: &Config) -> PathBuf {
     let assets_dir = match &config.assets_dir {
         None => get_data_dir(config).join("assets"),
 
-        Some(dir) => std::path::PathBuf::from(dir),
+        Some(dir) => PathBuf::from(dir),
     };
     assets_dir
 }
 
-pub fn get_minecraft_dir(config: &Config, modpack_name: &String) -> std::path::PathBuf {
+pub fn get_minecraft_dir(config: &Config, modpack_name: &String) -> PathBuf {
     get_data_dir(config).join("modpacks").join(modpack_name)
 }
 
-pub fn get_index_path(config: &Config) -> std::path::PathBuf {
+pub fn get_index_path(config: &Config) -> PathBuf {
     get_data_dir(config).join("modpacks").join("index.json")
 }
 
-fn get_config_path() -> std::path::PathBuf {
-    let mut config_dir = dirs::config_dir().expect("Failed to get config directory");
-    config_dir.push(build_config::get_launcher_name());
-    config_dir.push("config.json");
+fn get_config_path() -> PathBuf {
+    let config_dir = dirs::config_dir().expect("Failed to get config directory").join(build_config::get_launcher_name()).join("config.json");
     config_dir
+}
+
+pub fn get_java_dir(config: &Config) -> PathBuf {
+    let java_dir = get_data_dir(config).join("java");
+    java_dir
 }
 
 pub fn load_config() -> Config {

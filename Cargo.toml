@@ -9,14 +9,19 @@ clearscreen = "3.0.0"
 colored = "2.1.0"
 ctrlc = "3.4.4"
 dirs = "5.0.1"
+flate2 = "1.0.30"
 futures = "0.3.30"
 indicatif = "0.17.8"
 inquire = "0.7.5"
+lazy_static = "1.5.0"
 num_cpus = "1.16.0"
 open = "5.3.0"
 qr2term = "0.3.1"
-reqwest = { version = "0.12.5", features = ["json"] }
+regex = "1.10.5"
+reqwest = { version = "0.12.5", features = ["json", "stream"] }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.120"
 sha1 = "0.10.6"
+tar = "0.4.41"
 tokio = { version = "1.39.1", features = ["full"] }
+which = "6.0.2"

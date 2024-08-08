@@ -3,13 +3,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use tokio::sync::oneshot;
+use std::sync::Arc;
 
 use crate::config::build_config;
 use crate::config::runtime_config;
 use crate::lang::get_loc;
-use crate::utils;
+use crate::progress::ProgressBar;
 
 use super::files::get_files_in_dir;
 
@@ -76,7 +75,8 @@ pub async fn sync_modpack(
     config: &runtime_config::Config,
     index: ModpackIndex,
     force_overwrite: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+    progress_bar: Arc<dyn ProgressBar + Send + Sync>
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     clearscreen::clear().unwrap();
 
     let modpack_dir = runtime_config::get_minecraft_dir(config, &index.modpack_name);
@@ -105,26 +105,8 @@ pub async fn sync_modpack(
         abs_path_overwrite.extend(assets_iter);
     }
 
-    let (hash_tx, mut hash_rx): (UnboundedSender<()>, UnboundedReceiver<()>) = unbounded_channel();
-    let (result_tx, result_rx) = oneshot::channel();
-
-    let hash_files_count = abs_path_overwrite.len();
-    let abs_path_overwrite_copy = abs_path_overwrite.clone();
-    let _ = tokio::spawn(async move {
-        let result = super::files::hash_files(abs_path_overwrite_copy.into_iter(), hash_tx).await;
-        let _ = result_tx.send(result);
-    });
-
-    let hash_bar = utils::get_fancy_progress_bar(
-        hash_files_count as u64,
-        get_loc(&config.lang).checking_files,
-    );
-    while let Some(_) = hash_rx.recv().await {
-        hash_bar.inc(1);
-    }
-    hash_bar.finish();
-
-    let abs_path_overwrite_hashes = result_rx.await?;
+    progress_bar.set_message(get_loc(&config.lang).checking_files);
+    let abs_path_overwrite_hashes = super::files::hash_files(abs_path_overwrite.clone().into_iter(), Arc::clone(&progress_bar)).await?;
     let mut urls: Vec<String> = vec![];
     let mut paths: Vec<PathBuf> = vec![];
 
@@ -171,22 +153,8 @@ pub async fn sync_modpack(
         }
     }
 
-    let (download_tx, mut download_rx): (UnboundedSender<()>, UnboundedReceiver<()>) =
-        unbounded_channel();
-
-    let download_files_count = urls.len();
-    let _ = tokio::spawn(async move {
-        super::files::download_files(urls.into_iter(), paths.into_iter(), download_tx).await;
-    });
-
-    let download_bar = utils::get_fancy_progress_bar(
-        download_files_count as u64,
-        get_loc(&config.lang).downloading_files,
-    );
-    while let Some(_) = download_rx.recv().await {
-        download_bar.inc(1);
-    }
-    download_bar.finish();
+    progress_bar.set_message(get_loc(&config.lang).downloading_files);
+    super::files::download_files(urls.into_iter(), paths.into_iter(), progress_bar).await?;
 
     save_local_index(config, index);
     Ok(())

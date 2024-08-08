@@ -17,6 +17,7 @@ pub struct Localization {
     pub no_local_modpacks: &'static str,
     pub select_modpack: &'static str,
     pub select_menu_help: &'static str,
+    pub downloading_java: &'static str,
 }
 
 const RUSSIAN_LOC: Localization = Localization {
@@ -30,6 +31,7 @@ const RUSSIAN_LOC: Localization = Localization {
     no_local_modpacks: "Запуск без загруженных модпаков должен быть с интернетом",
     select_modpack: "Выберите модпак",
     select_menu_help: "↑↓ для перемещения, enter для выбора, ввод для поиска",
+    downloading_java: "Загрузка Java...",
 };
 
 const ENGLISH_LOC: Localization = Localization {
@@ -43,6 +45,7 @@ const ENGLISH_LOC: Localization = Localization {
     no_local_modpacks: "Running without downloaded modpacks should be with internet connection",
     select_modpack: "Select modpack",
     select_menu_help: "", // unused, using default
+    downloading_java: "Downloading Java...",
 };  
 
 pub fn get_loc(lang: &Lang) -> Localization {
