@@ -103,7 +103,7 @@ pub async fn launch(modpack_index: ModpackIndex, config: &Config, online: bool) 
     let mut mc_dir = get_minecraft_dir(&config, &modpack_index.modpack_name);
     let mc_dir_short = mc_dir.clone();
     if cfg!(windows) {
-        mc_dir = PathBuf::from(compat::win_get_long_path_name(mc_dir_short.to_str().unwrap()));
+        mc_dir = PathBuf::from(compat::win_get_long_path_name(mc_dir_short.to_str().unwrap())?);
     }
     fs::create_dir_all(mc_dir.join("natives")).await?;
 

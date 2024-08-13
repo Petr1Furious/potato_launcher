@@ -26,3 +26,5 @@ sha1 = "0.10.6"
 tar = "0.4.41"
 tokio = { version = "1.39.1", features = ["full"] }
 which = "6.0.2"
+winapi = { version = "0.3.9", features = ["namedpipeapi"] }
+winreg = "0.52.0"

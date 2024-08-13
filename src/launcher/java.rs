@@ -65,7 +65,10 @@ fn does_match(java: &JavaInstallation, required_version: &str) -> bool {
 #[cfg(target_os = "windows")]
 fn find_java_in_registry(key_name: &str, subkey_suffix: &str, java_dir_key: &str) -> Vec<JavaInstallation> {
     let hk_local_machine = RegKey::predef(HKEY_LOCAL_MACHINE);
-    let key = hk_local_machine.open_subkey_with_flags(key_name, KEY_READ | KEY_ENUMERATE_SUB_KEYS).ok()?;
+    let key = match hk_local_machine.open_subkey_with_flags(key_name, KEY_READ | KEY_ENUMERATE_SUB_KEYS) {
+        Ok(key) => key,
+        Err(_) => return Vec::new(),
+    };
 
     let subkeys: Vec<String> = key.enum_keys().filter_map(Result::ok).collect();
     let mut res = Vec::new();
@@ -75,10 +78,12 @@ fn find_java_in_registry(key_name: &str, subkey_suffix: &str, java_dir_key: &str
         if let Ok(subkey) = hk_local_machine.open_subkey(&key_path) {
             if let Ok(java_dir_value) = subkey.get_value::<String, _>(java_dir_key) {
                 let exe_path = Path::new(&java_dir_value).join("bin").join("java.exe");
-                res.push(JavaInstallation {
-                    version: subkey.to_string(),
-                    path: exe_path,
-                });
+                if let Ok(version) = subkey.get_value::<String, _>("Version") {
+                    res.push(JavaInstallation {
+                        version,
+                        path: exe_path,
+                    });
+                }
             }
         }
     }
@@ -111,6 +116,7 @@ fn find_java_installations() -> Vec<JavaInstallation> {
     res
 }
 
+#[cfg(not(target_os = "windows"))]
 fn find_java_in_dir(dir: &Path, suffix: &str, startswith: &str) -> Vec<JavaInstallation> {
     let mut res = Vec::new();
 
