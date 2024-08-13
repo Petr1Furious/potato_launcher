@@ -56,9 +56,21 @@ async fn main() {
         }
     }
 
-    let mut installation = launcher::java::get_java(selected_index.java_version.as_str(), &runtime_config::get_java_dir(&config));
+    let config_java_path = config.java_paths.get(&selected_index.java_version);
+    let mut installation: Option<launcher::java::JavaInstallation> = if config_java_path.is_some() {
+        Some(launcher::java::JavaInstallation { path: std::path::PathBuf::from(config_java_path.unwrap()), version: selected_index.java_version.clone() })
+    } else {
+        None
+    };
+    if installation.is_none() {
+        installation = launcher::java::get_java(selected_index.java_version.as_str(), &runtime_config::get_java_dir(&config));
+    }
     if installation.is_none() {
         installation = Some(launcher::java::download_java(selected_index.java_version.as_str(), &runtime_config::get_java_dir(&config), progress_bar, &config.lang).await.unwrap());
     }
-    println!("Java installation: {:?}", installation);
+
+    config.java_paths.insert(selected_index.modpack_name.clone(), installation.unwrap().path.to_str().unwrap().to_string());
+    runtime_config::save_config(&config);
+
+    launcher::launch::launch(selected_index, &config, online).await.unwrap();
 }

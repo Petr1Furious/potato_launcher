@@ -13,6 +13,7 @@ pub struct UserInfo {
 pub trait AuthProvider {
     async fn authenticate(&mut self) -> Result<String, Error>;
     async fn get_user_info(&self, token: &String) -> Result<UserInfo, Error>;
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 pub fn get_auth_provider() -> impl AuthProvider {

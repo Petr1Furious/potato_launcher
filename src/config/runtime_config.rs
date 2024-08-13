@@ -25,6 +25,9 @@ fn get_data_dir(config: &Config) -> PathBuf {
 
         Some(dir) => PathBuf::from(dir),
     };
+    if !data_dir.exists() {
+        std::fs::create_dir_all(&data_dir).expect("Failed to create data directory");
+    }
     data_dir
 }
 
@@ -34,24 +37,41 @@ pub fn get_assets_dir(config: &Config) -> PathBuf {
 
         Some(dir) => PathBuf::from(dir),
     };
+    if !assets_dir.exists() {
+        std::fs::create_dir_all(&assets_dir).expect("Failed to create assets directory");
+    }
     assets_dir
 }
 
 pub fn get_minecraft_dir(config: &Config, modpack_name: &String) -> PathBuf {
-    get_data_dir(config).join("modpacks").join(modpack_name)
+    let minecraft_dir = get_data_dir(config).join("modpacks").join(modpack_name);
+    if !minecraft_dir.exists() {
+        std::fs::create_dir_all(&minecraft_dir).expect("Failed to create minecraft directory");
+    }
+    minecraft_dir
 }
 
 pub fn get_index_path(config: &Config) -> PathBuf {
-    get_data_dir(config).join("modpacks").join("index.json")
+    let modpacks_path = get_data_dir(config).join("modpacks");
+    if !modpacks_path.exists() {
+        std::fs::create_dir_all(&modpacks_path).expect("Failed to create modpacks directory");
+    }
+    modpacks_path.join("index.json")
 }
 
 fn get_config_path() -> PathBuf {
-    let config_dir = dirs::config_dir().expect("Failed to get config directory").join(build_config::get_launcher_name()).join("config.json");
-    config_dir
+    let config_dir = dirs::config_dir().expect("Failed to get config directory").join(build_config::get_launcher_name());
+    if !config_dir.exists() {
+        std::fs::create_dir_all(&config_dir).expect("Failed to create config directory");
+    }
+    config_dir.join("config.json")
 }
 
 pub fn get_java_dir(config: &Config) -> PathBuf {
     let java_dir = get_data_dir(config).join("java");
+    if !java_dir.exists() {
+        std::fs::create_dir_all(&java_dir).expect("Failed to create java directory");
+    }
     java_dir
 }
 

@@ -22,8 +22,8 @@ use crate::lang::{Lang, get_loc};
 
 #[derive(Debug, Deserialize)]
 pub struct JavaInstallation {
-    version: String,
-    path: PathBuf,
+    pub version: String,
+    pub path: PathBuf,
 }
 
 lazy_static::lazy_static! {
@@ -151,14 +151,6 @@ fn find_java_installations() -> Vec<JavaInstallation> {
     res.extend(find_java_in_dir(Path::new("/usr/local/opt"), "", "openjdk"));
     res.extend(find_java_in_dir(Path::new("/opt/homebrew/opt"), "", "openjdk"));
     res
-}
-
-fn fix_java_path(path: &str) -> String {
-    if path.ends_with("javaw.exe") {
-        path.trim_end_matches("javaw.exe").to_string() + "java.exe"
-    } else {
-        path.to_string()
-    }
 }
 
 #[derive(Debug)]

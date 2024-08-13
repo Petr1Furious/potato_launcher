@@ -118,4 +118,8 @@ impl AuthProvider for TGAuthProvider {
         let user_info: UserInfo = serde_json::from_str(&body).unwrap();
         Ok(user_info)
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
