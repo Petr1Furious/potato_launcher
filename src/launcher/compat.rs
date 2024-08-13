@@ -1,9 +1,12 @@
+#[cfg(not(target_os = "windows"))]
+use std::path::Path;
 #[cfg(target_os = "windows")]
 use std::ptr::null_mut;
 
 #[cfg(not(target_os = "windows"))]
 fn chmod_x<P: AsRef<Path>>(path: P) {
     use std::os::unix::fs::PermissionsExt;
+    use std::fs;
 
     let path = path.as_ref();
     let mut perms = fs::metadata(path).unwrap().permissions();
@@ -43,6 +46,6 @@ pub fn win_get_long_path_name(path: &str) -> Result<String, std::io::Error> {
 }
 
 #[cfg(not(target_os = "windows"))]
-pub fn win_get_long_path_name(path: &str) -> String {
-    path.to_string()
+pub fn win_get_long_path_name(path: &str) -> Result<String, std::io::Error> {
+    Ok(path.to_string())
 }
