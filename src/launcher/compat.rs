@@ -4,7 +4,7 @@ use std::path::Path;
 use std::ptr::null_mut;
 
 #[cfg(not(target_os = "windows"))]
-fn chmod_x<P: AsRef<Path>>(path: P) {
+pub fn chmod_x<P: AsRef<Path>>(path: P) {
     use std::os::unix::fs::PermissionsExt;
     use std::fs;
 
