@@ -76,5 +76,5 @@ async fn main() {
     config.java_paths.insert(selected_index.modpack_name.clone(), installation.unwrap().path.to_str().unwrap().to_string());
     runtime_config::save_config(&config);
 
-    // launcher::launch::launch(selected_index, &config, online).await.unwrap();
+    launcher::launch::launch(selected_index, &config, online).await.unwrap();
 }

@@ -151,7 +151,7 @@ pub async fn launch(modpack_index: ModpackIndex, config: &Config, online: bool) 
     ].concat();
 
     if online {
-        let auth_provider = get_auth_provider();
+        let auth_provider = get_auth_provider(config.lang.clone());
         if auth_provider.as_any().downcast_ref::<ElyByAuthProvider>().is_some() {
             java_options.insert(0, format!("-javaagent:{}={}", mc_dir.join(AUTHLIB_INJECTOR_FILENAME).to_str().unwrap(), ELY_BY_BASE));
         } else if auth_provider.as_any().downcast_ref::<TGAuthProvider>().is_some() {

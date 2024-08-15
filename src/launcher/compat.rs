@@ -46,6 +46,6 @@ pub fn win_get_long_path_name(path: &str) -> Result<String, std::io::Error> {
 }
 
 #[cfg(not(target_os = "windows"))]
-pub fn win_get_long_path_name(path: &str) -> Result<String, std::io::Error> {
-    Ok(path.to_string())
+pub fn win_get_long_path_name(_path: &str) -> Result<String, std::io::Error> {
+    unimplemented!();
 }

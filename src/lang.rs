@@ -18,6 +18,8 @@ pub struct Localization {
     pub select_modpack: &'static str,
     pub select_menu_help: &'static str,
     pub downloading_java: &'static str,
+    pub authorize_in_browser_window: &'static str,
+    pub open_link_manually: &'static str,
 }
 
 const RUSSIAN_LOC: Localization = Localization {
@@ -32,6 +34,8 @@ const RUSSIAN_LOC: Localization = Localization {
     select_modpack: "Выберите модпак",
     select_menu_help: "↑↓ для перемещения, enter для выбора, ввод для поиска",
     downloading_java: "Загрузка Java...",
+    authorize_in_browser_window: "Авторизуйтесь в открывшемся окне браузера...",
+    open_link_manually: "Или откройте ссылку вручную",
 };
 
 const ENGLISH_LOC: Localization = Localization {
@@ -46,6 +50,8 @@ const ENGLISH_LOC: Localization = Localization {
     select_modpack: "Select modpack",
     select_menu_help: "", // unused, using default
     downloading_java: "Downloading Java...",
+    authorize_in_browser_window: "Authorize in the browser window",
+    open_link_manually: "Or open the link manually",
 };  
 
 pub fn get_loc(lang: &Lang) -> Localization {

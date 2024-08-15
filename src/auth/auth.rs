@@ -10,7 +10,7 @@ pub async fn auth_and_save(config: &mut runtime_config::Config) -> bool {
 
     let mut tried_auth = false;
     for _ in 0..2 {
-        let mut auth_provider = base::get_auth_provider();
+        let mut auth_provider = base::get_auth_provider(config.lang.clone());
         let token: String;
         if config.token.is_some() {
             token = config.token.clone().unwrap();
@@ -23,7 +23,8 @@ pub async fn auth_and_save(config: &mut runtime_config::Config) -> bool {
             match auth_provider.authenticate().await {
                 Ok(t) => token = t,
                 Err(e) => {
-                    if e.is_connect() {
+                    let e = e.downcast_ref::<reqwest::Error>();
+                    if e.is_some() && e.unwrap().is_connect() {
                         online = false;
                         break;
                     } else {
@@ -41,13 +42,16 @@ pub async fn auth_and_save(config: &mut runtime_config::Config) -> bool {
                 break;
             }
             Err(e) => {
-                if e.is_connect() {
-                    online = false;
-                    break;
-                } else if let Some(status) = e.status() {
-                    if status.is_client_error() {
-                        config.token = None;
-                        continue;
+                let e = e.downcast_ref::<reqwest::Error>();
+                if let Some(e) = e {
+                    if e.is_connect() {
+                        online = false;
+                        break;
+                    } else if let Some(status) = e.status() {
+                        if status.is_client_error() {
+                            config.token = None;
+                            continue;
+                        }
                     }
                 }
                 print_error_and_exit(format!("{}: {:?}", lang::get_loc(&config.lang).error_during_user_info, e).as_str());

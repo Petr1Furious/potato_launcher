@@ -1,7 +1,8 @@
 use super::base::{AuthProvider, UserInfo};
-use reqwest::{Client, Error};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, time::Duration};
+use std::error::Error;
 
 #[derive(Deserialize, Serialize)]
 struct LoginStartResponse {
@@ -29,7 +30,7 @@ impl TGAuthProvider {
         }
     }
 
-    async fn get_bot_name(&mut self) -> Result<String, Error> {
+    async fn get_bot_name(&mut self) -> Result<String, Box<dyn Error>> {
         if self.bot_name.is_none() {
             let body = self
                 .client
@@ -47,7 +48,7 @@ impl TGAuthProvider {
 }
 
 impl AuthProvider for TGAuthProvider {
-    async fn authenticate(&mut self) -> Result<String, Error> {
+    async fn authenticate(&mut self) -> Result<String, Box<dyn Error>> {
         let bot_name = self.get_bot_name().await?;
         let body = self
             .client
@@ -93,7 +94,7 @@ impl AuthProvider for TGAuthProvider {
                 }
                 Err(e) => {
                     if !e.is_timeout() {
-                        return Err(e);
+                        return Err(Box::new(e));
                     }
                 }
             }
@@ -104,7 +105,7 @@ impl AuthProvider for TGAuthProvider {
         Ok(access_token)
     }
 
-    async fn get_user_info(&self, token: &String) -> Result<UserInfo, Error> {
+    async fn get_user_info(&self, token: &str) -> Result<UserInfo, Box<dyn Error>> {
         let resp = self
             .client
             .get(format!("{}/login/profile", self.base_url))
