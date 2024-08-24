@@ -2,10 +2,7 @@ use std::env;
 use std::fs;
 
 fn main() {
-    let build_envs = [
-        "LAUNCHER_NAME",
-        "SERVER_BASE",
-    ];
+    let build_envs = ["LAUNCHER_NAME", "SERVER_BASE"];
 
     let optional_envs = [
         "TGAUTH_BASE",
@@ -24,7 +21,10 @@ fn main() {
     }
     for env in optional_envs.iter() {
         let value = env::var(env).unwrap_or_default();
-        config_content.push_str(&format!("pub const {}: Option<&str> = Some(\"{}\");\n", env, value));
+        config_content.push_str(&format!(
+            "pub const {}: Option<&str> = Some(\"{}\");\n",
+            env, value
+        ));
     }
     fs::write(dest_path, config_content).unwrap();
 }

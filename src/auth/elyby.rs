@@ -1,16 +1,23 @@
-use warp::{http::Uri, reply::Reply};
 use reqwest::Client;
 use serde::Deserialize;
-use std::{error::Error, sync::{Arc, Mutex}};
-use tokio::sync::{mpsc::unbounded_channel, oneshot};
 use std::sync::mpsc::channel;
+use std::{
+    error::Error,
+    sync::{Arc, Mutex},
+};
+use tokio::sync::{mpsc::unbounded_channel, oneshot};
 use warp::Filter;
+use warp::{http::Uri, reply::Reply};
 
-use crate::{config::build_config, lang::{get_loc, Lang}};
+use crate::message_provider::MessageProvider;
+use crate::{
+    config::build_config,
+    lang::LangMessage,
+};
 
 use super::base::{AuthProvider, UserInfo};
 
-pub const ELY_BY_BASE : &str = "https://ely.by/";
+pub const ELY_BY_BASE: &str = "https://ely.by/";
 
 // TODO: test this horrible code
 #[derive(Debug)]
@@ -25,9 +32,9 @@ impl std::fmt::Display for InvalidCodeError {
 }
 
 pub struct ElyByAuthProvider {
-    lang: Lang,
     redirect_uri: Option<String>,
     token: Option<String>,
+    message_provider: Arc<dyn MessageProvider>,
 }
 
 #[derive(Deserialize)]
@@ -36,35 +43,37 @@ struct AuthQuery {
 }
 
 impl ElyByAuthProvider {
-    pub fn new(lang: Lang) -> Self {
+    pub fn new(message_provider: Arc<dyn MessageProvider>) -> Self {
         Self {
-            lang,
             redirect_uri: None,
             token: None,
+            message_provider,
         }
     }
 
     fn print_auth_url(&self) {
         if let Some(ref redirect_uri) = self.redirect_uri {
-            println!("{}", get_loc(&self.lang).authorize_in_browser_window);
             let url = format!(
                 "https://account.ely.by/oauth2/v1?client_id={}&redirect_uri={}&response_type=code&scope=account_info%20minecraft_server_session&prompt=select_account",
                 build_config::get_elyby_client_id().unwrap(), redirect_uri
             );
-            println!("{}: {}", get_loc(&self.lang).open_link_manually, url);
             open::that(&url).unwrap();
+            self.message_provider.set_message(LangMessage::AuthMessage { url });
         } else {
             panic!("redirect_uri is not set");
         }
     }
 
-    async fn exchange_code(&self, code: &str) -> Result<String, Box<dyn Error>> {
+    async fn exchange_code(&self, code: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
         let client = Client::new();
         let resp = client
             .post("https://account.ely.by/api/oauth2/v1/token")
             .form(&[
                 ("client_id", &build_config::get_elyby_client_id().unwrap()),
-                ("client_secret", &build_config::get_elyby_client_secret().unwrap()),
+                (
+                    "client_secret",
+                    &build_config::get_elyby_client_secret().unwrap(),
+                ),
                 ("redirect_uri", self.redirect_uri.as_ref().unwrap()),
                 ("grant_type", &"authorization_code".to_string()),
                 ("code", &code.to_string()),
@@ -89,7 +98,7 @@ impl ElyByAuthProvider {
 }
 
 impl AuthProvider for ElyByAuthProvider {
-    async fn authenticate(&mut self) -> Result<String, Box<dyn Error>> {
+    async fn authenticate(&mut self) -> Result<String, Box<dyn Error + Send + Sync>> {
         let (code_tx, mut code_rx) = unbounded_channel();
         let code_tx = Arc::new(Mutex::new(code_tx));
 
@@ -103,7 +112,7 @@ impl AuthProvider for ElyByAuthProvider {
                 .map(move |query: AuthQuery| {
                     let code_tx = code_tx.lock().unwrap();
                     code_tx.send(query.code.clone()).unwrap();
-                    
+
                     let error_rx = error_rx.lock().unwrap();
                     let error = error_rx.recv();
                     if error.is_ok() {
@@ -113,16 +122,18 @@ impl AuthProvider for ElyByAuthProvider {
                             Uri::from_maybe_shared(format!(
                                 "https://account.ely.by/oauth2/code/success?appName={}",
                                 build_config::get_elyby_app_name().unwrap()
-                            )).unwrap()
+                            ))
+                            .unwrap(),
                         ))
                     }
                 })
         };
 
         let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
-        let (addr, server) = warp::serve(handle).bind_with_graceful_shutdown(([127, 0, 0, 1], 0), async {
-            shutdown_rx.await.ok();
-        });
+        let (addr, server) =
+            warp::serve(handle).bind_with_graceful_shutdown(([127, 0, 0, 1], 0), async {
+                shutdown_rx.await.ok();
+            });
 
         self.redirect_uri = Some(format!("http://localhost:{}/", addr.port()));
 
@@ -152,7 +163,7 @@ impl AuthProvider for ElyByAuthProvider {
         Ok(self.token.as_ref().unwrap().clone())
     }
 
-    async fn get_user_info(&self, token: &str) -> Result<UserInfo, Box<dyn Error>> {
+    async fn get_user_info(&self, token: &str) -> Result<UserInfo, Box<dyn Error + Send + Sync>> {
         let client = Client::new();
         let resp = client
             .get("https://account.ely.by/api/account/v1/info")
@@ -163,9 +174,5 @@ impl AuthProvider for ElyByAuthProvider {
 
         let data: UserInfo = resp.json().await?;
         Ok(data)
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }

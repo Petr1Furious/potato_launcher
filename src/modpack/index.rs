@@ -2,17 +2,17 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::config::build_config;
 use crate::config::runtime_config;
-use crate::lang::get_loc;
+use crate::lang::LangMessage;
 use crate::progress::ProgressBar;
 
 use super::files::get_files_in_dir;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ModpackIndex {
     pub modpack_name: String,
     pub java_version: String,
@@ -29,7 +29,8 @@ pub struct ModpackIndex {
     pub client_filename: String,
 }
 
-pub async fn load_remote_indexes() -> Result<Vec<ModpackIndex>, Box<dyn std::error::Error>> {
+pub async fn load_remote_indexes(
+) -> Result<Vec<ModpackIndex>, Box<dyn std::error::Error + Send + Sync>> {
     let client = Client::new();
     let res = client
         .get(format!("{}/index.json", build_config::get_server_base()))
@@ -41,8 +42,7 @@ pub async fn load_remote_indexes() -> Result<Vec<ModpackIndex>, Box<dyn std::err
     Ok(res)
 }
 
-pub fn load_local_indexes(config: &runtime_config::Config) -> Vec<ModpackIndex> {
-    let index_path = runtime_config::get_index_path(config);
+pub fn load_local_indexes(index_path: &Path) -> Vec<ModpackIndex> {
     if !index_path.is_file() {
         return vec![];
     }
@@ -56,39 +56,36 @@ pub fn load_local_indexes(config: &runtime_config::Config) -> Vec<ModpackIndex> 
 }
 
 pub fn get_local_index(config: &runtime_config::Config) -> Option<ModpackIndex> {
-    let indexes = load_local_indexes(config);
+    let indexes = load_local_indexes(&runtime_config::get_index_path(config));
     indexes
         .into_iter()
         .find(|x| &x.modpack_name == config.modpack_name.as_ref().unwrap())
 }
 
-fn save_local_index(config: &runtime_config::Config, index: ModpackIndex) {
-    let mut indexes = load_local_indexes(config);
+fn save_local_index(index_path: &Path, index: ModpackIndex) {
+    let mut indexes = load_local_indexes(&index_path);
     indexes.retain(|x| x.modpack_name != index.modpack_name);
     indexes.push(index);
     if let Ok(data) = serde_json::to_string_pretty(&indexes) {
-        let _ = fs::write(runtime_config::get_index_path(config), data);
+        let _ = fs::write(&index_path, data);
     }
 }
 
 pub async fn sync_modpack(
-    config: &runtime_config::Config,
     index: ModpackIndex,
     force_overwrite: bool,
-    progress_bar: Arc<dyn ProgressBar + Send + Sync>
+    modpack_dir: &Path,
+    assets_dir: &Path,
+    index_path: &Path,
+    progress_bar: Arc<dyn ProgressBar + Send + Sync>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    clearscreen::clear().unwrap();
-
-    let modpack_dir = runtime_config::get_minecraft_dir(config, &index.modpack_name);
-    let assets_dir = runtime_config::get_assets_dir(config);
-
     let get_modpack_files = |x| get_files_in_dir(&modpack_dir.join(x));
     let no_overwrite_iter = index
         .include_no_overwrite
         .iter()
         .map(get_modpack_files)
         .flatten();
-    let assets_iter = get_files_in_dir(&assets_dir).into_iter();
+    let assets_iter = get_files_in_dir(assets_dir).into_iter();
 
     let mut abs_path_overwrite: HashSet<PathBuf> = index
         .include
@@ -105,8 +102,12 @@ pub async fn sync_modpack(
         abs_path_overwrite.extend(assets_iter);
     }
 
-    progress_bar.set_message(get_loc(&config.lang).checking_files);
-    let abs_path_overwrite_hashes = super::files::hash_files(abs_path_overwrite.clone().into_iter(), Arc::clone(&progress_bar)).await?;
+    progress_bar.set_message(LangMessage::CheckingFiles);
+    let abs_path_overwrite_hashes = super::files::hash_files(
+        abs_path_overwrite.clone().into_iter(),
+        Arc::clone(&progress_bar),
+    )
+    .await?;
     let mut urls: Vec<String> = vec![];
     let mut paths: Vec<PathBuf> = vec![];
 
@@ -153,9 +154,9 @@ pub async fn sync_modpack(
         }
     }
 
-    progress_bar.set_message(get_loc(&config.lang).downloading_files);
+    progress_bar.set_message(LangMessage::DownloadingFiles);
     super::files::download_files(urls.into_iter(), paths.into_iter(), progress_bar).await?;
 
-    save_local_index(config, index);
+    save_local_index(index_path, index);
     Ok(())
 }

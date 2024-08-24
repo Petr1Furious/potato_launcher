@@ -1,2 +1,2 @@
-pub mod index;
 mod files;
+pub mod index;

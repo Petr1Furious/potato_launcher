@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub enum Lang {
@@ -6,57 +6,188 @@ pub enum Lang {
     Russian,
 }
 
-pub struct Localization {
-    pub exiting: &'static str,
-    pub error_during_auth: &'static str,
-    pub error_during_user_info: &'static str,
-    pub error_use_internet_for_first_connection: &'static str,
-    pub checking_files: &'static str,
-    pub downloading_files: &'static str,
-    pub no_remote_modpacks: &'static str,
-    pub no_local_modpacks: &'static str,
-    pub select_modpack: &'static str,
-    pub select_menu_help: &'static str,
-    pub downloading_java: &'static str,
-    pub authorize_in_browser_window: &'static str,
-    pub open_link_manually: &'static str,
+#[derive(Clone, PartialEq, Debug)]
+pub enum LangMessage {
+    AuthMessage{url: String},
+    NoConnectionToAuthServer,
+    AuthError(String),
+    AuthorizedAs(String),
+    Authorizing,
+    Authorize,
+    FetchingModpackIndexes,
+    FetchedRemoteIndexes,
+    NoConnectionToIndexServer,
+    ErrorFetchingRemoteIndexes(String),
+    FetchIndexes,
+    SelectModpack,
+    NoIndexes,
+    CheckingFiles,
+    DownloadingFiles,
+    SyncModpack,
+    SyncingModpack,
+    ModpackSynced,
+    ModpackSyncError(String),
+    DownloadingJava,
+    DownloadJava{version: String},
+    JavaInstalled{version: String},
+    Launch,
+    LaunchError(String),
+    Language,
 }
 
-const RUSSIAN_LOC: Localization = Localization {
-    exiting: "Выход...",
-    error_during_auth: "Ошибка при аутентификации",
-    error_during_user_info: "Ошибка при получении информации о пользователе",
-    error_use_internet_for_first_connection: "Используйте интернет для первого подключения",
-    checking_files: "Проверка файлов...",
-    downloading_files: "Загрузка файлов...",
-    no_remote_modpacks: "Список модпаков на сервере пуст",
-    no_local_modpacks: "Запуск без загруженных модпаков должен быть с интернетом",
-    select_modpack: "Выберите модпак",
-    select_menu_help: "↑↓ для перемещения, enter для выбора, ввод для поиска",
-    downloading_java: "Загрузка Java...",
-    authorize_in_browser_window: "Авторизуйтесь в открывшемся окне браузера...",
-    open_link_manually: "Или откройте ссылку вручную",
-};
-
-const ENGLISH_LOC: Localization = Localization {
-    exiting: "Exiting...",
-    error_during_auth: "Error during authentication",
-    error_during_user_info: "Error during user info retrieval",
-    error_use_internet_for_first_connection: "Use internet for first connection",
-    checking_files: "Checking files...",
-    downloading_files: "Downloading files...",
-    no_remote_modpacks: "No modpacks on server",
-    no_local_modpacks: "Running without downloaded modpacks should be with internet connection",
-    select_modpack: "Select modpack",
-    select_menu_help: "", // unused, using default
-    downloading_java: "Downloading Java...",
-    authorize_in_browser_window: "Authorize in the browser window",
-    open_link_manually: "Or open the link manually",
-};  
-
-pub fn get_loc(lang: &Lang) -> Localization {
-    match lang {
-        Lang::English => ENGLISH_LOC,
-        Lang::Russian => RUSSIAN_LOC,
+impl LangMessage {
+    pub fn to_string(&self, lang: &Lang) -> String {
+        match self {
+            LangMessage::AuthMessage { url: _ } => {
+                match lang {
+                    Lang::English => "Authorize in the browser window.\nOr open the link manually.".to_string(),
+                    Lang::Russian => "Авторизуйтесь в открывшемся окне браузера.\nИли откройте ссылку вручную.".to_string(),
+                }
+            }
+            LangMessage::NoConnectionToAuthServer => {
+                match lang {
+                    Lang::English => "No connection to the authorization server".to_string(),
+                    Lang::Russian => "Нет подключения к серверу авторизации".to_string(),
+                }
+            }
+            LangMessage::AuthError(e) => {
+                match lang {
+                    Lang::English => format!("Authorization error: {}", e),
+                    Lang::Russian => format!("Ошибка авторизации: {}", e),
+                }
+            }
+            LangMessage::AuthorizedAs(username) => {
+                match lang {
+                    Lang::English => format!("Authorized as {}", username),
+                    Lang::Russian => format!("Авторизован как {}", username),
+                }
+            }
+            LangMessage::Authorizing => {
+                match lang {
+                    Lang::English => "Authorizing...".to_string(),
+                    Lang::Russian => "Авторизация...".to_string(),
+                }
+            }
+            LangMessage::Authorize => {
+                match lang {
+                    Lang::English => "Authorize".to_string(),
+                    Lang::Russian => "Авторизоваться".to_string(),
+                }
+            }
+            LangMessage::FetchingModpackIndexes => {
+                match lang {
+                    Lang::English => "Fetching modpack list...".to_string(),
+                    Lang::Russian => "Получение списка модпаков...".to_string(),
+                }
+            }
+            LangMessage::FetchedRemoteIndexes => {
+                match lang {
+                    Lang::English => "Fetched remote modpack list".to_string(),
+                    Lang::Russian => "Получен список модпаков с сервера".to_string(),
+                }
+            }
+            LangMessage::NoConnectionToIndexServer => {
+                match lang {
+                    Lang::English => "No connection to the modpack server".to_string(),
+                    Lang::Russian => "Нет подключения к серверу модпаков".to_string(),
+                }
+            }
+            LangMessage::ErrorFetchingRemoteIndexes(s) => {
+                match lang {
+                    Lang::English => format!("Error fetching remote modpack list: {}", s),
+                    Lang::Russian => format!("Ошибка получения списка модпаков с сервера: {}", s),
+                }
+            }
+            LangMessage::FetchIndexes => {
+                match lang {
+                    Lang::English => "Fetch modpack list".to_string(),
+                    Lang::Russian => "Получить список модпаков".to_string(),
+                }
+            }
+            LangMessage::SelectModpack => {
+                match lang {
+                    Lang::English => "Select modpack".to_string(),
+                    Lang::Russian => "Выберите модпак".to_string(),
+                }
+            }
+            LangMessage::NoIndexes => {
+                match lang {
+                    Lang::English => "No modpacks fetched".to_string(),
+                    Lang::Russian => "Список модпаков пуст".to_string(),
+                }
+            }
+            LangMessage::CheckingFiles => {
+                match lang {
+                    Lang::English => "Checking files...".to_string(),
+                    Lang::Russian => "Проверка файлов...".to_string(),
+                }
+            }
+            LangMessage::DownloadingFiles => {
+                match lang {
+                    Lang::English => "Downloading files...".to_string(),
+                    Lang::Russian => "Загрузка файлов...".to_string(),
+                }
+            }
+            LangMessage::SyncModpack => {
+                match lang {
+                    Lang::English => "Sync modpack".to_string(),
+                    Lang::Russian => "Синхронизировать модпак".to_string(),
+                }
+            }
+            LangMessage::SyncingModpack => {
+                match lang {
+                    Lang::English => "Syncing modpack...".to_string(),
+                    Lang::Russian => "Синхронизация модпака...".to_string(),
+                }
+            }
+            LangMessage::ModpackSynced => {
+                match lang {
+                    Lang::English => "Modpack up-to-date".to_string(),
+                    Lang::Russian => "Модпак синхронизирован".to_string(),
+                }
+            }
+            LangMessage::ModpackSyncError(e) => {
+                match lang {
+                    Lang::English => format!("Error syncing modpack: {}", e),
+                    Lang::Russian => format!("Ошибка синхронизации модпака: {}", e),
+                }
+            }
+            LangMessage::DownloadingJava => {
+                match lang {
+                    Lang::English => "Downloading Java...".to_string(),
+                    Lang::Russian => "Загрузка Java...".to_string(),
+                }
+            }
+            LangMessage::DownloadJava { version } => {
+                match lang {
+                    Lang::English => format!("Download Java {}", version),
+                    Lang::Russian => format!("Загрузить Java {}", version),
+                }
+            }
+            LangMessage::JavaInstalled { version } => {
+                match lang {
+                    Lang::English => format!("Java {} installed", version),
+                    Lang::Russian => format!("Java {} установлена", version),
+                }
+            }
+            LangMessage::Launch => {
+                match lang {
+                    Lang::English => "Launch".to_string(),
+                    Lang::Russian => "Запустить".to_string(),
+                }
+            }
+            LangMessage::LaunchError(e) => {
+                match lang {
+                    Lang::English => format!("Error launching: {}", e),
+                    Lang::Russian => format!("Ошибка запуска: {}", e),
+                }
+            }
+            LangMessage::Language => {
+                match lang {
+                    Lang::English => "English".to_string(),
+                    Lang::Russian => "Русский".to_string(),
+                }
+            }
+        }
     }
 }

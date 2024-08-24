@@ -1,13 +1,13 @@
+use flate2::read::GzDecoder;
+use futures::StreamExt;
+use regex::Regex;
+use reqwest::Client;
+use serde::Deserialize;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
-use futures::StreamExt;
-use regex::Regex;
-use reqwest::Client;
-use serde::Deserialize;
-use flate2::read::GzDecoder;
 use tar::Archive;
 
 use serde_json::Value;
@@ -16,9 +16,9 @@ use winreg::enums::*;
 #[cfg(target_os = "windows")]
 use winreg::RegKey;
 
-use crate::utils::get_temp_dir;
+use crate::lang::LangMessage;
 use crate::progress::ProgressBar;
-use crate::lang::{Lang, get_loc};
+use crate::utils::get_temp_dir;
 
 #[derive(Debug, Deserialize)]
 pub struct JavaInstallation {
@@ -36,36 +36,44 @@ const JAVA_BINARY_NAME: &str = "java.exe";
 #[cfg(not(target_os = "windows"))]
 const JAVA_BINARY_NAME: &str = "java";
 
-fn check_java(path: &Path) -> Option<JavaInstallation> {
+fn get_installation(path: &Path) -> Option<JavaInstallation> {
     let path = if path.is_file() {
         path.to_path_buf()
     } else {
         which::which(path).ok()?
     };
 
-    let output = Command::new(&path)
-        .arg("-version")
-        .output()
-        .ok()?;
+    let output = Command::new(&path).arg("-version").output().ok()?;
 
     let version_result = String::from_utf8_lossy(&output.stderr);
     let captures = JAVA_VERSION_RGX.captures(&version_result)?;
 
     let version = captures.get(1)?.as_str().to_string();
-    Some(JavaInstallation {
-        version,
-        path,
-    })
+    Some(JavaInstallation { version, path })
 }
 
 fn does_match(java: &JavaInstallation, required_version: &str) -> bool {
     java.version.starts_with(&format!("{}.", required_version))
 }
 
+pub fn check_java(required_version: &str, path: &Path) -> bool {
+    if let Some(installation) = get_installation(path) {
+        does_match(&installation, required_version)
+    } else {
+        false
+    }
+}
+
 #[cfg(target_os = "windows")]
-fn find_java_in_registry(key_name: &str, subkey_suffix: &str, java_dir_key: &str) -> Vec<JavaInstallation> {
+fn find_java_in_registry(
+    key_name: &str,
+    subkey_suffix: &str,
+    java_dir_key: &str,
+) -> Vec<JavaInstallation> {
     let hk_local_machine = RegKey::predef(HKEY_LOCAL_MACHINE);
-    let key = match hk_local_machine.open_subkey_with_flags(key_name, KEY_READ | KEY_ENUMERATE_SUB_KEYS) {
+    let key = match hk_local_machine
+        .open_subkey_with_flags(key_name, KEY_READ | KEY_ENUMERATE_SUB_KEYS)
+    {
         Ok(key) => key,
         Err(_) => return Vec::new(),
     };
@@ -126,10 +134,16 @@ fn find_java_in_dir(dir: &Path, suffix: &str, startswith: &str) -> Vec<JavaInsta
             if subdir.is_file() {
                 continue;
             }
-            if !startswith.is_empty() && !subdir.file_name().unwrap_or_default().to_string_lossy().starts_with(startswith) {
+            if !startswith.is_empty()
+                && !subdir
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .starts_with(startswith)
+            {
                 continue;
             }
-            if let Some(java) = check_java(&subdir.join(suffix).join("bin").join("java")) {
+            if let Some(java) = get_installation(&subdir.join(suffix).join("bin").join("java")) {
                 res.push(java);
             }
         }
@@ -152,10 +166,22 @@ fn find_java_installations() -> Vec<JavaInstallation> {
 #[cfg(target_os = "macos")]
 fn find_java_installations() -> Vec<JavaInstallation> {
     let mut res = Vec::new();
-    res.extend(find_java_in_dir(Path::new("/Library/Java/JavaVirtualMachines"), "Contents/Home", ""));
-    res.extend(find_java_in_dir(Path::new("/System/Library/Java/JavaVirtualMachines"), "Contents/Home", ""));
+    res.extend(find_java_in_dir(
+        Path::new("/Library/Java/JavaVirtualMachines"),
+        "Contents/Home",
+        "",
+    ));
+    res.extend(find_java_in_dir(
+        Path::new("/System/Library/Java/JavaVirtualMachines"),
+        "Contents/Home",
+        "",
+    ));
     res.extend(find_java_in_dir(Path::new("/usr/local/opt"), "", "openjdk"));
-    res.extend(find_java_in_dir(Path::new("/opt/homebrew/opt"), "", "openjdk"));
+    res.extend(find_java_in_dir(
+        Path::new("/opt/homebrew/opt"),
+        "",
+        "openjdk",
+    ));
     res
 }
 
@@ -200,10 +226,17 @@ fn get_java_download_params(required_version: &str) -> Result<String, JavaDownlo
     Ok(params)
 }
 
-pub async fn download_java(required_version: &str, java_dir: &Path, progress_bar: Arc<dyn ProgressBar + Send + Sync>, lang: &Lang) -> Result<JavaInstallation, Box<dyn std::error::Error>> {
+pub async fn download_java(
+    required_version: &str,
+    java_dir: &Path,
+    progress_bar: Arc<dyn ProgressBar + Send + Sync>,
+) -> Result<JavaInstallation, Box<dyn std::error::Error>> {
     let client = Client::new();
     let query_str = get_java_download_params(required_version)?;
-    let versions_url = format!("https://api.azul.com/metadata/v1/zulu/packages/?{}", query_str);
+    let versions_url = format!(
+        "https://api.azul.com/metadata/v1/zulu/packages/?{}",
+        query_str
+    );
 
     let response = client.get(&versions_url).send().await?;
     let body = response.text().await?;
@@ -221,7 +254,7 @@ pub async fn download_java(required_version: &str, java_dir: &Path, progress_bar
 
     let total_size = response.content_length().unwrap_or(0);
     progress_bar.set_length(total_size);
-    progress_bar.set_message(get_loc(lang).downloading_java);
+    progress_bar.set_message(LangMessage::DownloadingJava);
 
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
@@ -237,7 +270,7 @@ pub async fn download_java(required_version: &str, java_dir: &Path, progress_bar
 
     let target_dir = java_dir.join(required_version);
     fs::create_dir_all(&target_dir)?;
-    
+
     for entry in archive.entries()? {
         let mut entry = entry?;
         let path = entry.path()?;
@@ -250,7 +283,7 @@ pub async fn download_java(required_version: &str, java_dir: &Path, progress_bar
     }
 
     let java_path = target_dir.join("bin").join(JAVA_BINARY_NAME);
-    match check_java(&java_path) {
+    match get_installation(&java_path) {
         Some(installation) => Ok(installation),
         None => Err(JavaDownloadError::NoJavaVersionsAvailable.into()),
     }
@@ -258,17 +291,20 @@ pub async fn download_java(required_version: &str, java_dir: &Path, progress_bar
 
 pub fn get_java(required_version: &str, java_dir: &Path) -> Option<JavaInstallation> {
     let mut installations = find_java_installations();
-    
-    if let Some(default_installation) = check_java(Path::new(JAVA_BINARY_NAME)) {
+
+    if let Some(default_installation) = get_installation(Path::new(JAVA_BINARY_NAME)) {
         installations.push(default_installation);
     }
 
     let java_dir = java_dir.join(required_version);
-    if let Some(installation) = check_java(&java_dir.join("bin").join(JAVA_BINARY_NAME)) {
+    if let Some(installation) = get_installation(&java_dir.join("bin").join(JAVA_BINARY_NAME)) {
         installations.push(installation);
     }
 
-    let matching = installations.into_iter().filter(|x| does_match(x, required_version)).next();
+    let matching = installations
+        .into_iter()
+        .filter(|x| does_match(x, required_version))
+        .next();
     if matching.is_some() {
         return matching;
     }

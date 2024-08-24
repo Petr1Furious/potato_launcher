@@ -1,71 +1,59 @@
-use super::base;
+use std::error::Error;
+use std::sync::Arc;
+
 use super::base::AuthProvider;
+use super::base::{self, UserInfo};
 
-use crate::lang;
-use crate::config::runtime_config;
-use crate::utils::print_error_and_exit;
+use crate::message_provider::MessageProvider;
 
-pub async fn auth_and_save(config: &mut runtime_config::Config) -> bool {
-    let mut online = true;
+pub struct AuthResult {
+    pub token: String,
+    pub user_info: UserInfo,
+}
 
-    let mut tried_auth = false;
-    for _ in 0..2 {
-        let mut auth_provider = base::get_auth_provider(config.lang.clone());
-        let token: String;
-        if config.token.is_some() {
-            token = config.token.clone().unwrap();
-        } else {
-            if tried_auth {
-                print_error_and_exit(lang::get_loc(&config.lang).error_during_auth);
-            }
-            tried_auth = true;
+pub async fn auth(
+    existing_token: Option<String>,
+    message_provider: Arc<dyn MessageProvider>,
+) -> Result<AuthResult, Box<dyn Error + Send + Sync>> {
+    let mut token = existing_token;
+    let mut user_info: Option<UserInfo> = None;
 
-            match auth_provider.authenticate().await {
-                Ok(t) => token = t,
-                Err(e) => {
-                    let e = e.downcast_ref::<reqwest::Error>();
-                    if e.is_some() && e.unwrap().is_connect() {
-                        online = false;
-                        break;
-                    } else {
-                        print_error_and_exit(lang::get_loc(&config.lang).error_during_auth);
-                    }
-                }
-            }
-            config.token = Some(token.clone());
+    let mut auth_provider = base::get_auth_provider(message_provider);
+
+    let tries_num = if token.is_some() { 2 } else { 1 };
+    for i in 0..tries_num {
+        if token.is_none() {
+            token = Some(auth_provider.authenticate().await?);
         }
-    
-        let user = auth_provider.get_user_info(&token).await;
-        match user {
-            Ok(user) => {
-                config.user_info = Some(user);
+
+        match auth_provider.get_user_info(token.as_ref().unwrap()).await {
+            Ok(info) => {
+                user_info = Some(info);
                 break;
             }
+
             Err(e) => {
-                let e = e.downcast_ref::<reqwest::Error>();
-                if let Some(e) = e {
-                    if e.is_connect() {
-                        online = false;
-                        break;
-                    } else if let Some(status) = e.status() {
+                let mut token_error = false;
+                if let Some(re) = e.downcast_ref::<reqwest::Error>() {
+                    if let Some(status) = re.status() {
                         if status.is_client_error() {
-                            config.token = None;
-                            continue;
+                            token_error = true;
                         }
                     }
                 }
-                print_error_and_exit(format!("{}: {:?}", lang::get_loc(&config.lang).error_during_user_info, e).as_str());
+
+                if token_error && i + 1 != tries_num {
+                    // try again with a new token in the next iteration
+                    token = None;
+                } else {
+                    return Err(e);
+                }
             }
         }
     }
 
-    if !online {
-        if config.user_info.is_none() {
-            print_error_and_exit(lang::get_loc(&config.lang).error_use_internet_for_first_connection);
-        }
-    }
-
-    runtime_config::save_config(&config);
-
-    return online;
+    return Ok(AuthResult {
+        token: token.unwrap(),
+        user_info: user_info.unwrap(),
+    });
 }

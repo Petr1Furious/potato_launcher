@@ -1,24 +1,13 @@
 use crate::config::build_config;
-use crate::lang;
-use crate::config::runtime_config::Config;
 use std::fs;
 use std::path::PathBuf;
 
-use colored::Colorize;
-
-pub fn set_sigint_handler(config: &Config) {
-    let lang = config.lang.clone();
-
+pub fn set_sigint_handler() {
     ctrlc::set_handler(move || {
-        println!("{}", lang::get_loc(&lang).exiting.red());
+        println!("Exiting...");
         std::process::exit(0);
     })
     .expect("Error setting Ctrl-C handler");
-}
-
-pub fn print_error_and_exit(message: &str) -> ! {
-    println!("{}", message.red());
-    std::process::exit(1);
 }
 
 pub fn get_temp_dir() -> PathBuf {

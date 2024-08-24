@@ -1,8 +1,8 @@
+use reqwest::Client;
+use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-use std::env;
-use reqwest::Client;
 
 use crate::config::build_config;
 
@@ -12,7 +12,11 @@ lazy_static::lazy_static! {
 
 async fn fetch_new_binary() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let client = Client::new();
-    let response = client.get(UPDATE_URL.as_str()).send().await?.error_for_status()?;
+    let response = client
+        .get(UPDATE_URL.as_str())
+        .send()
+        .await?
+        .error_for_status()?;
     let bytes = response.bytes().await?;
     Ok(bytes.to_vec())
 }
@@ -20,7 +24,11 @@ async fn fetch_new_binary() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
 async fn fetch_new_hash() -> Result<String, Box<dyn std::error::Error>> {
     let client = Client::new();
     let hash_url = format!("{}.sha1", UPDATE_URL.as_str());
-    let response = client.get(hash_url.as_str()).send().await?.error_for_status()?;
+    let response = client
+        .get(hash_url.as_str())
+        .send()
+        .await?
+        .error_for_status()?;
     let text = response.text().await?;
     Ok(text.trim().to_string())
 }
@@ -46,7 +54,13 @@ fn replace_binary(current_path: &Path, new_binary: &[u8]) -> std::io::Result<()>
     let temp_path = current_path.with_extension("tmp");
     fs::write(&temp_path, new_binary)?;
     Command::new("cmd")
-        .args(&["/C", "move", "/Y", temp_path.to_str().unwrap(), current_path.to_str().unwrap()])
+        .args(&[
+            "/C",
+            "move",
+            "/Y",
+            temp_path.to_str().unwrap(),
+            current_path.to_str().unwrap(),
+        ])
         .spawn()?;
     Ok(())
 }
@@ -58,9 +72,7 @@ pub async fn auto_update() -> Result<(), Box<dyn std::error::Error>> {
     if !compare_binaries().await? {
         replace_binary(&current_exe, &new_binary)?;
         let args: Vec<String> = env::args().collect();
-        Command::new(&current_exe)
-            .args(&args[1..])
-            .spawn()?;
+        Command::new(&current_exe).args(&args[1..]).spawn()?;
         std::process::exit(0);
     }
 

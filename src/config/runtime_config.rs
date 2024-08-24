@@ -60,7 +60,9 @@ pub fn get_index_path(config: &Config) -> PathBuf {
 }
 
 fn get_config_path() -> PathBuf {
-    let config_dir = dirs::config_dir().expect("Failed to get config directory").join(build_config::get_launcher_name());
+    let config_dir = dirs::config_dir()
+        .expect("Failed to get config directory")
+        .join(build_config::get_launcher_name());
     if !config_dir.exists() {
         std::fs::create_dir_all(&config_dir).expect("Failed to create config directory");
     }

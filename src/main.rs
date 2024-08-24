@@ -1,80 +1,38 @@
-mod config;
+mod app;
 mod auth;
+mod config;
 mod constants;
-mod lang;
-mod utils;
-mod modpack;
 mod interactive;
+mod lang;
 mod launcher;
+mod modpack;
 mod progress;
-
-use std::sync::Arc;
+mod utils;
+mod message_provider;
 
 use config::runtime_config;
-use modpack::index::{sync_modpack, ModpackIndex};
 use tokio;
 
-#[tokio::main]
-async fn main() {
-    if let Err(e) = launcher::update::auto_update().await {
+fn main() {
+    utils::set_sigint_handler();
+
+    let update_runtime = tokio::runtime::Runtime::new().unwrap();
+    if let Err(e) = update_runtime.block_on(launcher::update::auto_update()) {
         eprintln!("Error updating: {}", e);
     }
 
-    let mut config = runtime_config::load_config();
-    utils::set_sigint_handler(&config);
+    // let progress_bar = Arc::new(progress::TerminalBarWrapper::new());
 
-    let mut online = auth::auth::auth_and_save(&mut config).await;
-    
-    let mut indexes: Vec<ModpackIndex> = vec![];
-    if online {
-        match modpack::index::load_remote_indexes().await {
-            Ok(i) => indexes = i,
-            Err(_) => online = false,
-        }
-    }
-    if !online {
-        indexes = modpack::index::load_local_indexes(&config)
-    };
+    // let selected_index = indexes.iter().find(|x| &x.modpack_name == config.modpack_name.as_ref().unwrap()).unwrap().clone();
+    // if online {
+    //     let local_index = modpack::index::get_local_index(&config);
+    //     if (local_index.is_some() && local_index.as_ref().unwrap().modpack_version != selected_index.modpack_version) || local_index.is_none() {
+    //         sync_modpack(&config, selected_index.clone(), false, progress_bar.clone()).await.unwrap();
+    //     }
+    // }
 
-    if indexes.is_empty() {
-        utils::print_error_and_exit(if online {
-            lang::get_loc(&config.lang).no_remote_modpacks
-        } else {
-            lang::get_loc(&config.lang).no_local_modpacks
-        });
-    }
+    // launcher::launch::launch(selected_index, &config, online).await.unwrap();
 
-    if config.modpack_name.is_none() || !indexes.iter().any(|x| &x.modpack_name == config.modpack_name.as_ref().unwrap()) {
-        let modpack_name = interactive::select_modpack(&config, &indexes);
-        config.modpack_name = Some(modpack_name);
-        runtime_config::save_config(&config);
-    }
-
-    let progress_bar = Arc::new(progress::TerminalBarWrapper::new());
-
-    let selected_index = indexes.iter().find(|x| &x.modpack_name == config.modpack_name.as_ref().unwrap()).unwrap().clone();
-    if online {
-        let local_index = modpack::index::get_local_index(&config);
-        if (local_index.is_some() && local_index.as_ref().unwrap().modpack_version != selected_index.modpack_version) || local_index.is_none() {
-            sync_modpack(&config, selected_index.clone(), false, progress_bar.clone()).await.unwrap();
-        }
-    }
-
-    let config_java_path = config.java_paths.get(&selected_index.java_version);
-    let mut installation: Option<launcher::java::JavaInstallation> = if config_java_path.is_some() {
-        Some(launcher::java::JavaInstallation { path: std::path::PathBuf::from(config_java_path.unwrap()), version: selected_index.java_version.clone() })
-    } else {
-        None
-    };
-    if installation.is_none() {
-        installation = launcher::java::get_java(selected_index.java_version.as_str(), &runtime_config::get_java_dir(&config));
-    }
-    if installation.is_none() {
-        installation = Some(launcher::java::download_java(selected_index.java_version.as_str(), &runtime_config::get_java_dir(&config), progress_bar, &config.lang).await.unwrap());
-    }
-
-    config.java_paths.insert(selected_index.modpack_name.clone(), installation.unwrap().path.to_str().unwrap().to_string());
-    runtime_config::save_config(&config);
-
-    launcher::launch::launch(selected_index, &config, online).await.unwrap();
+    let config = runtime_config::load_config();
+    app::app::run_gui(config);
 }

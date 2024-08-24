@@ -5,8 +5,8 @@ use std::ptr::null_mut;
 
 #[cfg(not(target_os = "windows"))]
 pub fn chmod_x<P: AsRef<Path>>(path: P) {
-    use std::os::unix::fs::PermissionsExt;
     use std::fs;
+    use std::os::unix::fs::PermissionsExt;
 
     let path = path.as_ref();
     let mut perms = fs::metadata(path).unwrap().permissions();
@@ -16,10 +16,10 @@ pub fn chmod_x<P: AsRef<Path>>(path: P) {
 
 #[cfg(target_os = "windows")]
 fn _win_pipe_nowait(pipefd: std::os::windows::io::RawHandle) -> Result<(), std::io::Error> {
+    use winapi::shared::minwindef::DWORD;
     use winapi::um::namedpipeapi::SetNamedPipeHandleState;
     use winapi::um::winbase::PIPE_NOWAIT;
     use winapi::um::winnt::HANDLE;
-    use winapi::shared::minwindef::DWORD;
 
     let h = pipefd;
     let mut mode: DWORD = PIPE_NOWAIT;

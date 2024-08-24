@@ -1,12 +1,10 @@
+use maplit::hashmap;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use maplit::hashmap;
 use tokio::fs;
 use tokio::process::{Child, Command as TokioCommand};
 
-use crate::auth::base::{get_auth_provider, AuthProvider};
-use crate::auth::elyby::{ElyByAuthProvider, ELY_BY_BASE};
-use crate::auth::telegram::TGAuthProvider;
+use crate::auth::elyby::ELY_BY_BASE;
 use crate::config::build_config;
 use crate::config::runtime_config::{get_assets_dir, get_minecraft_dir, Config};
 use crate::modpack::index::ModpackIndex;
@@ -34,7 +32,12 @@ const PATHSEP: &str = ":";
 fn apply_arg(arg: &serde_json::Value) -> bool {
     let arg = arg.as_object().unwrap();
 
-    if arg.get("value") == Some(&serde_json::json!(["-Dos.name=Windows 10", "-Dos.version=10.0"])) {
+    if arg.get("value")
+        == Some(&serde_json::json!([
+            "-Dos.name=Windows 10",
+            "-Dos.version=10.0"
+        ]))
+    {
         return false;
     }
 
@@ -70,8 +73,13 @@ fn apply_arg(arg: &serde_json::Value) -> bool {
     false
 }
 
-fn replace_launch_config_variables(argument: String, variables: &HashMap<String, String>) -> String {
-    variables.iter().fold(argument, |acc, (k, v)| acc.replace(&format!("${{{}}}", k), v))
+fn replace_launch_config_variables(
+    argument: String,
+    variables: &HashMap<String, String>,
+) -> String {
+    variables.iter().fold(argument, |acc, (k, v)| {
+        acc.replace(&format!("${{{}}}", k), v)
+    })
 }
 
 fn library_name_to_path(full_name: &str) -> String {
@@ -81,8 +89,15 @@ fn library_name_to_path(full_name: &str) -> String {
     }
     let (pkg, name, version, suffix) = (parts[0], parts[1], parts[2], parts[3]);
     let pkg_path = pkg.replace('.', "/");
-    let suffix = if suffix.is_empty() { "".to_string() } else { format!("-{}", suffix) };
-    format!("libraries/{}/{}/{}/{}-{}{}.jar", pkg_path, name, version, name, version, suffix)
+    let suffix = if suffix.is_empty() {
+        "".to_string()
+    } else {
+        format!("-{}", suffix)
+    };
+    format!(
+        "libraries/{}/{}/{}/{}-{}{}.jar",
+        pkg_path, name, version, name, version, suffix
+    )
 }
 
 fn process_args(args: &[serde_json::Value], variables: &HashMap<String, String>) -> Vec<String> {
@@ -90,20 +105,31 @@ fn process_args(args: &[serde_json::Value], variables: &HashMap<String, String>)
     for arg in args {
         if apply_arg(arg) {
             if let Some(values) = arg.get("value").and_then(|v| v.as_array()) {
-                options.extend(values.iter().map(|v| replace_launch_config_variables(v.as_str().unwrap().to_string(), variables)));
+                options.extend(values.iter().map(|v| {
+                    replace_launch_config_variables(v.as_str().unwrap().to_string(), variables)
+                }));
             } else if let Some(value) = arg.get("value").and_then(|v| v.as_str()) {
-                options.push(replace_launch_config_variables(value.to_string(), variables));
+                options.push(replace_launch_config_variables(
+                    value.to_string(),
+                    variables,
+                ));
             }
         }
     }
     options
 }
 
-pub async fn launch(modpack_index: ModpackIndex, config: &Config, online: bool) -> Result<Child, Box<dyn std::error::Error>> {
+pub async fn launch(
+    modpack_index: ModpackIndex,
+    config: &Config,
+    online: bool,
+) -> Result<Child, Box<dyn std::error::Error>> {
     let mut mc_dir = get_minecraft_dir(&config, &modpack_index.modpack_name);
     let mc_dir_short = mc_dir.clone();
     if cfg!(windows) {
-        mc_dir = PathBuf::from(compat::win_get_long_path_name(mc_dir_short.to_str().unwrap())?);
+        mc_dir = PathBuf::from(compat::win_get_long_path_name(
+            mc_dir_short.to_str().unwrap(),
+        )?);
     }
     fs::create_dir_all(mc_dir.join("natives")).await?;
 
@@ -113,10 +139,24 @@ pub async fn launch(modpack_index: ModpackIndex, config: &Config, online: bool) 
             continue;
         }
         if apply_arg(arg) {
-            classpath.push(mc_dir.join(library_name_to_path(arg.get("name").unwrap().as_str().unwrap())).to_str().unwrap().to_string());
+            classpath.push(
+                mc_dir
+                    .join(library_name_to_path(
+                        arg.get("name").unwrap().as_str().unwrap(),
+                    ))
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
+            );
         }
     }
-    classpath.push(mc_dir.join(&modpack_index.client_filename).to_str().unwrap().to_string());
+    classpath.push(
+        mc_dir
+            .join(&modpack_index.client_filename)
+            .to_str()
+            .unwrap()
+            .to_string(),
+    );
 
     let variables: HashMap<String, String> = hashmap! {
         "natives_directory".to_string() => mc_dir.join("natives").to_str().unwrap().to_string(),
@@ -141,29 +181,55 @@ pub async fn launch(modpack_index: ModpackIndex, config: &Config, online: bool) 
     };
 
     let mut java_options = vec![
-        GC_OPTIONS.iter().map(|&s| s.to_string()).collect::<Vec<_>>(),
+        GC_OPTIONS
+            .iter()
+            .map(|&s| s.to_string())
+            .collect::<Vec<_>>(),
         vec![
             "-Xms512M".to_string(),
             format!("-Xmx{}", config.xmx),
             "-Duser.language=en".to_string(),
             "-Dfile.encoding=UTF-8".to_string(),
         ],
-    ].concat();
+    ]
+    .concat();
 
     if online {
-        let auth_provider = get_auth_provider(config.lang.clone());
-        if auth_provider.as_any().downcast_ref::<ElyByAuthProvider>().is_some() {
-            java_options.insert(0, format!("-javaagent:{}={}", mc_dir.join(AUTHLIB_INJECTOR_FILENAME).to_str().unwrap(), ELY_BY_BASE));
-        } else if auth_provider.as_any().downcast_ref::<TGAuthProvider>().is_some() {
-            java_options.insert(0, format!("-javaagent:{}={}", mc_dir.join(AUTHLIB_INJECTOR_FILENAME).to_str().unwrap(), build_config::get_tgauth_base().unwrap()));
+        if build_config::get_tgauth_base().is_some() {
+            java_options.insert(
+                0,
+                format!(
+                    "-javaagent:{}={}",
+                    mc_dir.join(AUTHLIB_INJECTOR_FILENAME).to_str().unwrap(),
+                    build_config::get_tgauth_base().unwrap()
+                ),
+            );
+        } else if build_config::get_elyby_app_name().is_some() {
+            java_options.insert(
+                0,
+                format!(
+                    "-javaagent:{}={}",
+                    mc_dir.join(AUTHLIB_INJECTOR_FILENAME).to_str().unwrap(),
+                    ELY_BY_BASE
+                ),
+            );
         }
     }
 
     java_options.extend(process_args(&modpack_index.java_args, &variables));
     let minecraft_options = process_args(&modpack_index.game_args, &variables);
 
-    let mut cmd = TokioCommand::new(config.java_paths.get(&modpack_index.modpack_name).unwrap().clone());
-    cmd.args(&java_options).arg(&modpack_index.main_class).args(&minecraft_options).current_dir(mc_dir_short);
+    let mut cmd = TokioCommand::new(
+        config
+            .java_paths
+            .get(&modpack_index.modpack_name)
+            .unwrap()
+            .clone(),
+    );
+    cmd.args(&java_options)
+        .arg(&modpack_index.main_class)
+        .args(&minecraft_options)
+        .current_dir(mc_dir_short);
 
     // for some reason this is needed on macOS for minecraft process not to crash with
     // "Assertion failed: (count <= len && "snprintf() output has been truncated"), function LOAD_ERROR, file dispatch.c, line 74."

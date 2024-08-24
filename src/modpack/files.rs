@@ -1,21 +1,21 @@
+use reqwest::Client;
+use sha1::{Digest, Sha1};
 use std::collections::HashMap;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::fs;
-use sha1::{Sha1, Digest};
-use reqwest::Client;
 use tokio::fs as async_fs;
 use tokio::io::AsyncWriteExt;
 
-use crate::progress::{ProgressBar, TaskFutureResult, run_tasks_with_progress};
+use crate::progress::{run_tasks_with_progress, ProgressBar, TaskFutureResult};
 
-pub fn get_files_in_dir(path: &PathBuf) -> Vec<PathBuf> {
+pub fn get_files_in_dir(path: &Path) -> Vec<PathBuf> {
     let mut files = Vec::new();
     if path.is_file() {
-        files.push(path.clone());
+        files.push(path.to_path_buf());
     } else if let Ok(entries) = fs::read_dir(path) {
         for entry in entries.flatten() {
-            files.extend(get_files_in_dir(&entry.path()));
+            files.extend(get_files_in_dir(&entry.path()).into_iter().map(|x| x.to_path_buf()));
         }
     }
     files
@@ -26,7 +26,10 @@ async fn hash_file(path: &Path) -> Result<String, std::io::Error> {
     Ok(format!("{:x}", Sha1::digest(&data)))
 }
 
-pub async fn hash_files(files: impl Iterator<Item = PathBuf>, progress_bar: Arc<dyn ProgressBar + Send + Sync>) -> Result<HashMap<PathBuf, String>, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn hash_files(
+    files: impl Iterator<Item = PathBuf>,
+    progress_bar: Arc<dyn ProgressBar + Send + Sync>,
+) -> Result<HashMap<PathBuf, String>, Box<dyn std::error::Error + Send + Sync>> {
     let hashes = Arc::new(Mutex::new(HashMap::new()));
 
     let files: Vec<PathBuf> = files.collect();
@@ -43,20 +46,24 @@ pub async fn hash_files(files: impl Iterator<Item = PathBuf>, progress_bar: Arc<
                     hashes.insert(path, hash);
                     TaskFutureResult::Ok(1)
                 }
-                Err(e) => {
-                    TaskFutureResult::Err(e.into())
-                }
+                Err(e) => TaskFutureResult::Err(e.into()),
             }
         }
     });
 
     run_tasks_with_progress(tasks, progress_bar, tasks_count, num_cpus::get()).await?;
 
-    let hashes = Arc::try_unwrap(hashes).expect("Arc unwrap failed").into_inner();
+    let hashes = Arc::try_unwrap(hashes)
+        .expect("Arc unwrap failed")
+        .into_inner();
     Ok(hashes.unwrap())
 }
 
-async fn download_file(client: &Client, url: &str, path: &Path) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn download_file(
+    client: &Client,
+    url: &str,
+    path: &Path,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let response = client.get(url).send().await?.bytes().await?;
 
     let parent_dir = path.parent().expect("Invalid file path");
@@ -67,7 +74,11 @@ async fn download_file(client: &Client, url: &str, path: &Path) -> Result<(), Bo
     Ok(())
 }
 
-pub async fn download_files(urls: impl Iterator<Item = String>, paths: impl Iterator<Item = PathBuf>, progress_bar: Arc<dyn ProgressBar + Send + Sync>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn download_files(
+    urls: impl Iterator<Item = String>,
+    paths: impl Iterator<Item = PathBuf>,
+    progress_bar: Arc<dyn ProgressBar + Send + Sync>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     const MAX_CONCURRENT_DOWNLOADS: usize = 10;
     let client = Client::new();
 
