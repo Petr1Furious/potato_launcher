@@ -1,6 +1,10 @@
 use std::{path::PathBuf, sync::mpsc};
 
-use crate::{config::runtime_config, lang::LangMessage, modpack::index::{load_local_indexes, load_remote_indexes, ModpackIndex}};
+use crate::{
+    config::runtime_config,
+    lang::LangMessage,
+    modpack::index::{load_local_indexes, load_remote_indexes, ModpackIndex},
+};
 
 use super::task::Task;
 
@@ -79,17 +83,18 @@ impl IndexState {
         };
     }
 
-    pub fn update(&mut self, runtime: &tokio::runtime::Runtime, config: &runtime_config::Config, ctx: &egui::Context) -> UpdateResult {
+    pub fn update(
+        &mut self,
+        runtime: &tokio::runtime::Runtime,
+        config: &runtime_config::Config,
+        ctx: &egui::Context,
+    ) -> UpdateResult {
         if self.status == FetchStatus::NotFetched && self.fetch_task.is_none() {
             let index_path = runtime_config::get_index_path(config);
             let ctx = ctx.clone();
-            self.fetch_task = Some(fetch_indexes(
-                runtime,
-                index_path.clone(),
-                move || {
-                    ctx.request_repaint();
-                },
-            ));
+            self.fetch_task = Some(fetch_indexes(runtime, index_path.clone(), move || {
+                ctx.request_repaint();
+            }));
         }
 
         if let Some(task) = self.fetch_task.as_ref() {
@@ -103,20 +108,27 @@ impl IndexState {
         UpdateResult::IndexesNotUpdated
     }
 
-    pub fn render_ui(&mut self, ui: &mut egui::Ui, config: &mut runtime_config::Config) -> UpdateResult {
+    pub fn render_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        config: &mut runtime_config::Config,
+    ) -> UpdateResult {
         ui.label(match self.status {
-            FetchStatus::NotFetched => {
-                LangMessage::FetchingModpackIndexes.to_string(&config.lang)
-            }
+            FetchStatus::NotFetched => LangMessage::FetchingModpackIndexes.to_string(&config.lang),
             FetchStatus::FetchedRemote => LangMessage::FetchedRemoteIndexes.to_string(&config.lang),
-            FetchStatus::FetchedLocalOffline => LangMessage::NoConnectionToIndexServer.to_string(&config.lang),
+            FetchStatus::FetchedLocalOffline => {
+                LangMessage::NoConnectionToIndexServer.to_string(&config.lang)
+            }
             FetchStatus::FetchedLocalRemoteError(ref s) => {
                 LangMessage::ErrorFetchingRemoteIndexes(s.clone()).to_string(&config.lang)
             }
         });
 
         if self.status != FetchStatus::FetchedRemote && self.fetch_task.is_none() {
-            if ui.button(LangMessage::FetchIndexes.to_string(&config.lang)).clicked() {
+            if ui
+                .button(LangMessage::FetchIndexes.to_string(&config.lang))
+                .clicked()
+            {
                 self.status = FetchStatus::NotFetched;
             }
         }
@@ -124,7 +136,10 @@ impl IndexState {
         let selected_modpack_name = config.modpack_name.clone();
         let mut just_selected_modpack: Option<&ModpackIndex> = None;
         egui::ComboBox::from_id_source("modpacks")
-            .selected_text(selected_modpack_name.unwrap_or_else(|| LangMessage::SelectModpack.to_string(&config.lang)))
+            .selected_text(
+                selected_modpack_name
+                    .unwrap_or_else(|| LangMessage::SelectModpack.to_string(&config.lang)),
+            )
             .show_ui(ui, |ui| match self.indexes.as_ref() {
                 Some(r) => {
                     for index in r {

@@ -10,10 +10,7 @@ use warp::Filter;
 use warp::{http::Uri, reply::Reply};
 
 use crate::message_provider::MessageProvider;
-use crate::{
-    config::build_config,
-    lang::LangMessage,
-};
+use crate::{config::build_config, lang::LangMessage};
 
 use super::base::{AuthProvider, UserInfo};
 
@@ -58,7 +55,8 @@ impl ElyByAuthProvider {
                 build_config::get_elyby_client_id().unwrap(), redirect_uri
             );
             open::that(&url).unwrap();
-            self.message_provider.set_message(LangMessage::AuthMessage { url });
+            self.message_provider
+                .set_message(LangMessage::AuthMessage { url });
         } else {
             panic!("redirect_uri is not set");
         }

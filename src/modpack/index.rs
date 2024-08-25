@@ -115,7 +115,8 @@ pub async fn sync_modpack(
                 "assets/{}",
                 path.strip_prefix(&assets_dir).unwrap().to_str().unwrap()
             )
-        }.replace("\\", "/");
+        }
+        .replace("\\", "/");
         if !index.objects.contains_key(&filepath) {
             fs::remove_file(path)?;
         }

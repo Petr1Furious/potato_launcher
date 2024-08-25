@@ -5,10 +5,10 @@ mod constants;
 mod interactive;
 mod lang;
 mod launcher;
+mod message_provider;
 mod modpack;
 mod progress;
 mod utils;
-mod message_provider;
 
 use config::runtime_config;
 use tokio;

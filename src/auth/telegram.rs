@@ -67,7 +67,8 @@ impl AuthProvider for TGAuthProvider {
 
         let tg_deeplink = format!("https://t.me/{}?start={}", bot_name, start_resp.code);
         open::that(&tg_deeplink).unwrap();
-        self.message_provider.set_message(LangMessage::AuthMessage { url: tg_deeplink });
+        self.message_provider
+            .set_message(LangMessage::AuthMessage { url: tg_deeplink });
 
         let access_token;
         loop {

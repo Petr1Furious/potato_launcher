@@ -1,6 +1,6 @@
+use egui::Widget;
 use std::path::Path;
 use std::sync::{mpsc, Arc};
-use egui::Widget;
 use tokio::runtime::Runtime;
 
 use crate::config::runtime_config;
@@ -14,7 +14,7 @@ use super::task::Task;
 #[derive(Clone, PartialEq)]
 enum ModpackSyncStatus {
     NotSynced,
-    NeedSync{ ignore_version: bool },
+    NeedSync { ignore_version: bool },
     Synced,
     SyncError(String),
 }
@@ -40,17 +40,23 @@ fn sync_modpack(
     let index_path = index_path.to_path_buf();
 
     runtime.spawn(async move {
-        let result =
-            match index::sync_modpack(modpack_index, force_overwrite, &modpack_dir, &assets_dir, &index_path, progress_bar.clone())
-                .await
-            {
-                Ok(()) => ModpackSyncResult {
-                    status: ModpackSyncStatus::Synced,
-                },
-                Err(e) => ModpackSyncResult {
-                    status: ModpackSyncStatus::SyncError(e.to_string()),
-                },
-            };
+        let result = match index::sync_modpack(
+            modpack_index,
+            force_overwrite,
+            &modpack_dir,
+            &assets_dir,
+            &index_path,
+            progress_bar.clone(),
+        )
+        .await
+        {
+            Ok(()) => ModpackSyncResult {
+                status: ModpackSyncStatus::Synced,
+            },
+            Err(e) => ModpackSyncResult {
+                status: ModpackSyncStatus::SyncError(e.to_string()),
+            },
+        };
 
         let _ = tx.send(result);
         progress_bar.finish();
@@ -79,14 +85,24 @@ impl ModpackSyncState {
     }
 
     fn is_up_to_date(&self, selected_index: &ModpackIndex) -> bool {
-        if let Some(local_index) = self.local_indexes.iter().find(|i| i.modpack_name == selected_index.modpack_name) {
+        if let Some(local_index) = self
+            .local_indexes
+            .iter()
+            .find(|i| i.modpack_name == selected_index.modpack_name)
+        {
             return local_index.modpack_version == selected_index.modpack_version;
         }
 
         return false;
     }
 
-    pub fn update(&mut self, runtime: &Runtime, selected_index: &ModpackIndex, config: &runtime_config::Config, need_modpack_check: bool) {
+    pub fn update(
+        &mut self,
+        runtime: &Runtime,
+        selected_index: &ModpackIndex,
+        config: &runtime_config::Config,
+        need_modpack_check: bool,
+    ) {
         if need_modpack_check {
             self.status = ModpackSyncStatus::NotSynced;
         }
@@ -97,7 +113,7 @@ impl ModpackSyncState {
             }
         }
 
-        if let ModpackSyncStatus::NeedSync{ ignore_version } = &self.status {
+        if let ModpackSyncStatus::NeedSync { ignore_version } = &self.status {
             if self.modpack_sync_task.is_none() {
                 if !*ignore_version {
                     if self.is_up_to_date(selected_index) {
@@ -106,7 +122,8 @@ impl ModpackSyncState {
                 }
 
                 if self.status != ModpackSyncStatus::Synced {
-                    let modpack_dir = runtime_config::get_minecraft_dir(config, &selected_index.modpack_name);
+                    let modpack_dir =
+                        runtime_config::get_minecraft_dir(config, &selected_index.modpack_name);
                     let assets_dir = runtime_config::get_assets_dir(config);
                     let index_path = runtime_config::get_index_path(config);
 
@@ -127,24 +144,32 @@ impl ModpackSyncState {
         if let Some(task) = self.modpack_sync_task.as_ref() {
             if let Some(result) = task.take_result() {
                 self.status = result.status;
-                self.local_indexes = index::load_local_indexes(&runtime_config::get_index_path(config));
+                self.local_indexes =
+                    index::load_local_indexes(&runtime_config::get_index_path(config));
                 self.modpack_sync_task = None;
             }
         }
     }
-    
+
     pub fn render_ui(&mut self, ui: &mut egui::Ui, config: &mut runtime_config::Config) {
-        if ui.button(LangMessage::SyncModpack.to_string(&config.lang)).clicked() {
-            self.status = ModpackSyncStatus::NeedSync{ ignore_version: true };
+        if ui
+            .button(LangMessage::SyncModpack.to_string(&config.lang))
+            .clicked()
+        {
+            self.status = ModpackSyncStatus::NeedSync {
+                ignore_version: true,
+            };
         }
 
         ui.label(match &self.status {
             ModpackSyncStatus::NotSynced => LangMessage::ModpackNotSynced.to_string(&config.lang),
-            ModpackSyncStatus::NeedSync{ ignore_version: _ } => {
+            ModpackSyncStatus::NeedSync { ignore_version: _ } => {
                 LangMessage::SyncingModpack.to_string(&config.lang)
-            },
+            }
             ModpackSyncStatus::Synced => LangMessage::ModpackSynced.to_string(&config.lang),
-            ModpackSyncStatus::SyncError(e) => LangMessage::ModpackSyncError(e.clone()).to_string(&config.lang),
+            ModpackSyncStatus::SyncError(e) => {
+                LangMessage::ModpackSyncError(e.clone()).to_string(&config.lang)
+            }
         });
 
         if self.modpack_sync_task.is_some() {

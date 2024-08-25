@@ -6,9 +6,7 @@ pub struct Task<T> {
 
 impl<T> Task<T> {
     pub fn new(receiver: mpsc::Receiver<T>) -> Self {
-        Task::<T> {
-            receiver,
-        }
+        Task::<T> { receiver }
     }
 
     pub fn take_result(&self) -> Option<T> {

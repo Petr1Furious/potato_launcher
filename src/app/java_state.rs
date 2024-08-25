@@ -1,6 +1,6 @@
+use egui::Widget;
 use std::path::Path;
 use std::sync::{mpsc, Arc};
-use egui::Widget;
 use tokio::runtime::Runtime;
 
 use crate::config::runtime_config;
@@ -37,9 +37,7 @@ pub fn download_java(
 
     runtime.spawn(async move {
         let result =
-            match java::download_java(&required_version, &java_dir, progress_bar.clone())
-                .await
-            {
+            match java::download_java(&required_version, &java_dir, progress_bar.clone()).await {
                 Ok(java_installation) => JavaDownloadResult {
                     status: JavaDownloadStatus::Downloaded,
                     java_installation: Some(java_installation),
@@ -81,13 +79,24 @@ impl JavaState {
         }
 
         if config.java_paths.get(&index.modpack_name).is_none() {
-            if let Some(java_installation) = java::get_java(&index.java_version, &runtime_config::get_java_dir(config)) {
-                config.java_paths.insert(index.modpack_name.clone(), java_installation.path.to_str().unwrap().to_string());
+            if let Some(java_installation) =
+                java::get_java(&index.java_version, &runtime_config::get_java_dir(config))
+            {
+                config.java_paths.insert(
+                    index.modpack_name.clone(),
+                    java_installation.path.to_str().unwrap().to_string(),
+                );
             }
         }
     }
 
-    pub fn update(&mut self, runtime: &Runtime, index: &ModpackIndex, config: &mut runtime_config::Config, need_java_check: bool) {
+    pub fn update(
+        &mut self,
+        runtime: &Runtime,
+        index: &ModpackIndex,
+        config: &mut runtime_config::Config,
+        need_java_check: bool,
+    ) {
         if need_java_check {
             self.status = JavaDownloadStatus::NotDownloaded;
         }
@@ -104,7 +113,12 @@ impl JavaState {
             if config.java_paths.get(&index.modpack_name).is_none() {
                 let java_dir = runtime_config::get_java_dir(config);
                 let java_download_progress_bar = self.java_download_progress_bar.clone();
-                let java_download_task = download_java(runtime, &index.java_version, &java_dir, java_download_progress_bar);
+                let java_download_task = download_java(
+                    runtime,
+                    &index.java_version,
+                    &java_dir,
+                    java_download_progress_bar,
+                );
                 self.java_download_progress_bar.reset();
                 self.java_download_task = Some(java_download_task);
             }
@@ -113,7 +127,17 @@ impl JavaState {
         if let Some(task) = self.java_download_task.as_ref() {
             if let Some(result) = task.take_result() {
                 if result.status == JavaDownloadStatus::Downloaded {
-                    config.java_paths.insert(index.modpack_name.clone(), result.java_installation.as_ref().unwrap().path.to_str().unwrap().to_string());
+                    config.java_paths.insert(
+                        index.modpack_name.clone(),
+                        result
+                            .java_installation
+                            .as_ref()
+                            .unwrap()
+                            .path
+                            .to_str()
+                            .unwrap()
+                            .to_string(),
+                    );
                     runtime_config::save_config(config);
                 }
                 self.status = result.status;
@@ -122,23 +146,50 @@ impl JavaState {
         }
     }
 
-    pub fn render_ui(&mut self, ui: &mut egui::Ui, config: &runtime_config::Config, selected_index: &ModpackIndex) {
+    pub fn render_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        config: &runtime_config::Config,
+        selected_index: &ModpackIndex,
+    ) {
         if self.java_download_task.is_some() {
             let progress_bar_state = self.java_download_progress_bar.get_state();
             if let Some(message) = &progress_bar_state.message {
                 ui.label(message.to_string(&config.lang));
             }
-            egui::ProgressBar::new(progress_bar_state.progress as f32 / progress_bar_state.total as f32)
-                .text(format!("{} / {}", &progress_bar_state.progress, &progress_bar_state.total))
-                .ui(ui);
+            egui::ProgressBar::new(
+                progress_bar_state.progress as f32 / progress_bar_state.total as f32,
+            )
+            .text(format!(
+                "{} / {}",
+                &progress_bar_state.progress, &progress_bar_state.total
+            ))
+            .ui(ui);
         } else if self.status != JavaDownloadStatus::Downloaded {
-            if ui.button(LangMessage::DownloadJava{ version: selected_index.java_version.clone() }.to_string(&config.lang)).clicked() {
+            if ui
+                .button(
+                    LangMessage::DownloadJava {
+                        version: selected_index.java_version.clone(),
+                    }
+                    .to_string(&config.lang),
+                )
+                .clicked()
+            {
                 self.status = JavaDownloadStatus::NotDownloaded;
             }
         }
 
-        if config.java_paths.get(&selected_index.modpack_name).is_some() {
-            ui.label(LangMessage::JavaInstalled{ version: selected_index.java_version.clone() }.to_string(&config.lang));
+        if config
+            .java_paths
+            .get(&selected_index.modpack_name)
+            .is_some()
+        {
+            ui.label(
+                LangMessage::JavaInstalled {
+                    version: selected_index.java_version.clone(),
+                }
+                .to_string(&config.lang),
+            );
         }
     }
 

@@ -2,7 +2,6 @@ use eframe::egui;
 use eframe::run_native;
 use tokio::runtime::Runtime;
 
-use crate::config::runtime_config;
 use super::auth_state::AuthState;
 use super::index_state;
 use super::index_state::IndexState;
@@ -10,6 +9,7 @@ use super::java_state::JavaState;
 use super::language_selector::LanguageSelector;
 use super::launcher::Launcher;
 use super::modpack_sync_state::ModpackSyncState;
+use crate::config::runtime_config;
 
 pub struct LauncherApp {
     runtime: Runtime,
@@ -78,15 +78,35 @@ impl LauncherApp {
                     need_modpack_check = true;
                 }
 
-                self.modpack_sync_state.update(&self.runtime, &selected_modpack, &self.config, need_modpack_check);
-                self.java_state.update(&self.runtime, &selected_modpack, &mut self.config, need_modpack_check);
+                self.modpack_sync_state.update(
+                    &self.runtime,
+                    &selected_modpack,
+                    &self.config,
+                    need_modpack_check,
+                );
+                self.java_state.update(
+                    &self.runtime,
+                    &selected_modpack,
+                    &mut self.config,
+                    need_modpack_check,
+                );
 
-                self.java_state.render_ui(ui, &self.config, &selected_modpack);
+                self.java_state
+                    .render_ui(ui, &self.config, &selected_modpack);
                 self.modpack_sync_state.render_ui(ui, &mut self.config);
 
-                if self.auth_state.ready_for_launch(&self.config) && self.java_state.ready_for_launch() && self.modpack_sync_state.ready_for_launch() {
+                if self.auth_state.ready_for_launch(&self.config)
+                    && self.java_state.ready_for_launch()
+                    && self.modpack_sync_state.ready_for_launch()
+                {
                     self.launcher.update();
-                    self.launcher.render_ui(&self.runtime, ui, &self.config, &selected_modpack, self.auth_state.online());
+                    self.launcher.render_ui(
+                        &self.runtime,
+                        ui,
+                        &self.config,
+                        &selected_modpack,
+                        self.auth_state.online(),
+                    );
                 }
             }
         });

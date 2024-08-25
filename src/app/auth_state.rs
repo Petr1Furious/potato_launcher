@@ -1,7 +1,7 @@
-use std::io::Cursor;
-use std::sync::{mpsc, Arc, Mutex};
 use image::Luma;
 use qrcode::QrCode;
+use std::io::Cursor;
+use std::sync::{mpsc, Arc, Mutex};
 use tokio::runtime::Runtime;
 
 use crate::auth::{auth::auth, base::UserInfo};
@@ -37,9 +37,7 @@ struct AuthMessageProvider {
 impl AuthMessageProvider {
     fn new(ctx: &egui::Context) -> Self {
         Self {
-            state: Arc::new(Mutex::new(AuthMessageState {
-                auth_message: None,
-            })),
+            state: Arc::new(Mutex::new(AuthMessageState { auth_message: None })),
             ctx: ctx.clone(),
         }
     }
@@ -163,21 +161,20 @@ impl AuthState {
         }
     }
 
-    pub fn render_ui(&mut self, ui: &mut egui::Ui, lang: &Lang, username: Option<&str>) {
+    pub fn render_ui(&mut self, ui: &mut egui::Ui, lang: &Lang, config_username: Option<&str>) {
         ui.label(match &self.auth_status {
-            AuthStatus::NotAuthorized => {
-                LangMessage::Authorizing.to_string(lang)
-            }
+            AuthStatus::NotAuthorized => LangMessage::Authorizing.to_string(lang),
             AuthStatus::AuthorizeError(e) => LangMessage::AuthError(e.clone()).to_string(lang),
-            AuthStatus::AuthorizeErrorOffline => LangMessage::NoConnectionToAuthServer.to_string(lang),
-            AuthStatus::Authorized => {
-                LangMessage::AuthorizedAs(
-                    username
-                        .expect("Authorized, but no username")
-                        .to_string(),
-                )
-                .to_string(lang)
+            AuthStatus::AuthorizeErrorOffline => LangMessage::NoConnectionToAuthServer {
+                offline_username: config_username.map(|username| username.to_string()),
             }
+            .to_string(lang),
+            AuthStatus::Authorized => LangMessage::AuthorizedAs(
+                config_username
+                    .expect("Authorized, but no username")
+                    .to_string(),
+            )
+            .to_string(lang),
         });
 
         if self.auth_task.is_some() {
@@ -187,7 +184,8 @@ impl AuthState {
                     let url = match message {
                         LangMessage::AuthMessage { url } => Some(url),
                         _ => None,
-                    }.unwrap();
+                    }
+                    .unwrap();
 
                     ui.hyperlink(&url);
                     let code = QrCode::new(url).unwrap();
@@ -195,7 +193,9 @@ impl AuthState {
 
                     let mut png_bytes: Vec<u8> = Vec::new();
                     let mut cursor = Cursor::new(&mut png_bytes);
-                    image::DynamicImage::ImageLuma8(image).write_to(&mut cursor, image::ImageFormat::Png).unwrap();
+                    image::DynamicImage::ImageLuma8(image)
+                        .write_to(&mut cursor, image::ImageFormat::Png)
+                        .unwrap();
 
                     let uri = "bytes://auth_qr.png";
                     ui.ctx().include_bytes(uri, png_bytes.clone());

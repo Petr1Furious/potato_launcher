@@ -15,7 +15,11 @@ pub fn get_files_in_dir(path: &Path) -> Vec<PathBuf> {
         files.push(path.to_path_buf());
     } else if let Ok(entries) = fs::read_dir(path) {
         for entry in entries.flatten() {
-            files.extend(get_files_in_dir(&entry.path()).into_iter().map(|x| x.to_path_buf()));
+            files.extend(
+                get_files_in_dir(&entry.path())
+                    .into_iter()
+                    .map(|x| x.to_path_buf()),
+            );
         }
     }
     files
