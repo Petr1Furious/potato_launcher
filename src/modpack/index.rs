@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::config::build_config;
-use crate::config::runtime_config;
 use crate::lang::LangMessage;
 use crate::progress::ProgressBar;
 
@@ -53,13 +52,6 @@ pub fn load_local_indexes(index_path: &Path) -> Vec<ModpackIndex> {
         },
         Err(_) => vec![],
     }
-}
-
-pub fn get_local_index(config: &runtime_config::Config) -> Option<ModpackIndex> {
-    let indexes = load_local_indexes(&runtime_config::get_index_path(config));
-    indexes
-        .into_iter()
-        .find(|x| &x.modpack_name == config.modpack_name.as_ref().unwrap())
 }
 
 fn save_local_index(index_path: &Path, index: ModpackIndex) {
@@ -112,7 +104,7 @@ pub async fn sync_modpack(
     let mut paths: Vec<PathBuf> = vec![];
 
     for path in abs_path_overwrite.iter() {
-        let file = if path.starts_with(&modpack_dir) {
+        let filepath = if path.starts_with(&modpack_dir) {
             path.strip_prefix(&modpack_dir)
                 .unwrap()
                 .to_str()
@@ -123,8 +115,8 @@ pub async fn sync_modpack(
                 "assets/{}",
                 path.strip_prefix(&assets_dir).unwrap().to_str().unwrap()
             )
-        };
-        if !index.objects.contains_key(&file) {
+        }.replace("\\", "/");
+        if !index.objects.contains_key(&filepath) {
             fs::remove_file(path)?;
         }
     }

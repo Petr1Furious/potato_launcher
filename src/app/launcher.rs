@@ -51,7 +51,9 @@ impl Launcher {
             LauncherStatus::Error(e) => {
                 ui.label(LangMessage::LaunchError(e.clone()).to_string(&config.lang));
             },
-            _ => {},
+            _ => {
+                ui.label(LangMessage::Running.to_string(&config.lang));
+            },
         }
     }
 }

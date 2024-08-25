@@ -29,5 +29,5 @@ warp = "0.3.7"
 which = "6.0.2"
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3.9", features = ["namedpipeapi"] }
+winapi = { version = "0.3.9", features = ["fileapi", "namedpipeapi"] }
 winreg = "0.52.0"

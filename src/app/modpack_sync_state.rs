@@ -13,7 +13,8 @@ use super::task::Task;
 
 #[derive(Clone, PartialEq)]
 enum ModpackSyncStatus {
-    NotSynced{ ignore_version: bool },
+    NotSynced,
+    NeedSync{ ignore_version: bool },
     Synced,
     SyncError(String),
 }
@@ -66,25 +67,41 @@ pub struct ModpackSyncState {
 }
 
 impl ModpackSyncState {
-    pub fn new(ctx: &egui::Context) -> Self {
+    pub fn new(ctx: &egui::Context, config: &runtime_config::Config) -> Self {
         let modpack_sync_progress_bar = Arc::new(GuiProgressBar::new(ctx));
 
         return ModpackSyncState {
-            status: ModpackSyncStatus::NotSynced{ ignore_version: false },
+            status: ModpackSyncStatus::NotSynced,
             modpack_sync_task: None,
             modpack_sync_progress_bar,
-            local_indexes: Vec::new(),
+            local_indexes: index::load_local_indexes(&runtime_config::get_index_path(config)),
         };
     }
 
-    pub fn update(&mut self, runtime: &Runtime, selected_index: &ModpackIndex, config: &runtime_config::Config) {
-        if let ModpackSyncStatus::NotSynced{ ignore_version } = &self.status {
+    fn is_up_to_date(&self, selected_index: &ModpackIndex) -> bool {
+        if let Some(local_index) = self.local_indexes.iter().find(|i| i.modpack_name == selected_index.modpack_name) {
+            return local_index.modpack_version == selected_index.modpack_version;
+        }
+
+        return false;
+    }
+
+    pub fn update(&mut self, runtime: &Runtime, selected_index: &ModpackIndex, config: &runtime_config::Config, need_modpack_check: bool) {
+        if need_modpack_check {
+            self.status = ModpackSyncStatus::NotSynced;
+        }
+
+        if self.status == ModpackSyncStatus::NotSynced {
+            if self.is_up_to_date(selected_index) {
+                self.status = ModpackSyncStatus::Synced;
+            }
+        }
+
+        if let ModpackSyncStatus::NeedSync{ ignore_version } = &self.status {
             if self.modpack_sync_task.is_none() {
                 if !*ignore_version {
-                    if let Some(local_index) = index::get_local_index(config) {
-                        if local_index.modpack_version == selected_index.modpack_version {
-                            self.status = ModpackSyncStatus::Synced;
-                        }
+                    if self.is_up_to_date(selected_index) {
+                        self.status = ModpackSyncStatus::Synced;
                     }
                 }
 
@@ -118,11 +135,12 @@ impl ModpackSyncState {
     
     pub fn render_ui(&mut self, ui: &mut egui::Ui, config: &mut runtime_config::Config) {
         if ui.button(LangMessage::SyncModpack.to_string(&config.lang)).clicked() {
-            self.status = ModpackSyncStatus::NotSynced{ ignore_version: true };
+            self.status = ModpackSyncStatus::NeedSync{ ignore_version: true };
         }
 
         ui.label(match &self.status {
-            ModpackSyncStatus::NotSynced{ ignore_version: _ } => {
+            ModpackSyncStatus::NotSynced => LangMessage::ModpackNotSynced.to_string(&config.lang),
+            ModpackSyncStatus::NeedSync{ ignore_version: _ } => {
                 LangMessage::SyncingModpack.to_string(&config.lang)
             },
             ModpackSyncStatus::Synced => LangMessage::ModpackSynced.to_string(&config.lang),

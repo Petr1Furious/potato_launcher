@@ -158,11 +158,16 @@ pub async fn launch(
             .to_string(),
     );
 
+    let mut classpath_str = classpath.join(PATHSEP);
+    if cfg!(windows) {
+        classpath_str = classpath_str.replace("/", "\\");
+    }
+
     let variables: HashMap<String, String> = hashmap! {
         "natives_directory".to_string() => mc_dir.join("natives").to_str().unwrap().to_string(),
         "launcher_name".to_string() => "java-minecraft-launcher".to_string(),
         "launcher_version".to_string() => "1.6.84-j".to_string(),
-        "classpath".to_string() => classpath.join(PATHSEP),
+        "classpath".to_string() => classpath_str,
         "classpath_separator".to_string() => PATHSEP.to_string(),
         "library_directory".to_string() => mc_dir.join("libraries").to_str().unwrap().to_string(),
         "auth_player_name".to_string() => config.user_info.as_ref().unwrap().username.clone(),

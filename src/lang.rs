@@ -24,6 +24,7 @@ pub enum LangMessage {
     CheckingFiles,
     DownloadingFiles,
     SyncModpack,
+    ModpackNotSynced,
     SyncingModpack,
     ModpackSynced,
     ModpackSyncError(String),
@@ -32,7 +33,9 @@ pub enum LangMessage {
     JavaInstalled{version: String},
     Launch,
     LaunchError(String),
+    Running,
     Language,
+    LanguageName,
 }
 
 impl LangMessage {
@@ -134,6 +137,12 @@ impl LangMessage {
                     Lang::Russian => "Синхронизировать модпак".to_string(),
                 }
             }
+            LangMessage::ModpackNotSynced => {
+                match lang {
+                    Lang::English => "Modpack not synced".to_string(),
+                    Lang::Russian => "Модпак не синхронизирован".to_string(),
+                }
+            }
             LangMessage::SyncingModpack => {
                 match lang {
                     Lang::English => "Syncing modpack...".to_string(),
@@ -182,7 +191,19 @@ impl LangMessage {
                     Lang::Russian => format!("Ошибка запуска: {}", e),
                 }
             }
+            LangMessage::Running => {
+                match lang {
+                    Lang::English => "Running...".to_string(),
+                    Lang::Russian => "Запущено...".to_string(),
+                }
+            }
             LangMessage::Language => {
+                match lang {
+                    Lang::English => "Language".to_string(),
+                    Lang::Russian => "Язык".to_string(),
+                }
+            }
+            LangMessage::LanguageName => {
                 match lang {
                     Lang::English => "English".to_string(),
                     Lang::Russian => "Русский".to_string(),

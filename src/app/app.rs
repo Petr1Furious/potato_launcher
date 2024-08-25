@@ -52,7 +52,7 @@ impl LauncherApp {
             auth_state: AuthState::new(ctx),
             index_state: IndexState::new(),
             java_state: JavaState::new(ctx),
-            modpack_sync_state: ModpackSyncState::new(ctx),
+            modpack_sync_state: ModpackSyncState::new(ctx, &config),
             config,
             launcher: Launcher::new(),
         }
@@ -71,15 +71,15 @@ impl LauncherApp {
             let render_result = self.index_state.render_ui(ui, &mut self.config);
             let selected_modpack = self.index_state.get_selected_modpack(&self.config).cloned();
             if let Some(selected_modpack) = selected_modpack {
-                let mut need_java_check = false;
+                let mut need_modpack_check = false;
                 if let index_state::UpdateResult::IndexesUpdated = update_result {
-                    need_java_check = true;
-                } else if let index_state::UpdateResult::IndexesNotUpdated = render_result {
-                    need_java_check = true;
+                    need_modpack_check = true;
+                } else if let index_state::UpdateResult::IndexesUpdated = render_result {
+                    need_modpack_check = true;
                 }
 
-                self.modpack_sync_state.update(&self.runtime, &selected_modpack, &self.config);
-                self.java_state.update(&self.runtime, &selected_modpack, &mut self.config, need_java_check);
+                self.modpack_sync_state.update(&self.runtime, &selected_modpack, &self.config, need_modpack_check);
+                self.java_state.update(&self.runtime, &selected_modpack, &mut self.config, need_modpack_check);
 
                 self.java_state.render_ui(ui, &self.config, &selected_modpack);
                 self.modpack_sync_state.render_ui(ui, &mut self.config);
