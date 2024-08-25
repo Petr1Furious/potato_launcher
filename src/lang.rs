@@ -175,8 +175,8 @@ impl LangMessage {
                 ),
             },
             LangMessage::JavaXMX => match lang {
-                Lang::English => "Java XMX".to_string(),
-                Lang::Russian => "Java XMX".to_string(),
+                Lang::English => "Java Xmx".to_string(),
+                Lang::Russian => "Java Xmx".to_string(),
             },
             LangMessage::SelectJavaPath => match lang {
                 Lang::English => "Select Java path".to_string(),

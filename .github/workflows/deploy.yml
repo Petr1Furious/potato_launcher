@@ -1,0 +1,81 @@
+on:
+  push:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['windows-latest', 'ubuntu-latest', 'macos-latest']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Set environment variables
+        run: |
+          echo "LAUNCHER_NAME=${{ vars.LAUNCHER_NAME }}" >> $GITHUB_ENV
+          echo "SERVER_BASE=${{ vars.SERVER_BASE }}" >> $GITHUB_ENV
+          if [ -n "${{ vars.TGAUTH_BASE }}" ]; then echo "TGAUTH_BASE=${{ vars.TGAUTH_BASE }}" >> $GITHUB_ENV; fi
+          if [ -n "${{ vars.ELYBY_APP_NAME }}" ]; then echo "ELYBY_APP_NAME=${{ vars.ELYBY_APP_NAME }}" >> $GITHUB_ENV; fi
+          if [ -n "${{ vars.ELYBY_CLIENT_ID }}" ]; then echo "ELYBY_CLIENT_ID=${{ vars.ELYBY_CLIENT_ID }}" >> $GITHUB_ENV; fi
+          if [ -n "${{ vars.ELYBY_CLIENT_SECRET }}" ]; then echo "ELYBY_CLIENT_SECRET=${{ vars.ELYBY_CLIENT_SECRET }}" >> $GITHUB_ENV; fi
+
+      - name: Build the launcher
+        run: |
+          cargo build --release
+          mkdir -p launcher
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            cp target/release/potato_launcher.exe launcher/"$LAUNCHER_NAME"
+          else
+            cp target/release/potato_launcher launcher/"$LAUNCHER_NAME"
+          fi
+
+      - if: ${{ github.ref }} == master
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_KEY }}
+          known_hosts: no
+
+      - if: ${{ github.ref }} == master
+        env:
+          SHA1SUM: sha1sum # Default value, will be overridden for macOS
+        run: |
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            TARGET_FILENAME="${LAUNCHER_NAME}.exe"
+          elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+            TARGET_FILENAME="${LAUNCHER_NAME}_linux"
+          elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+            TARGET_FILENAME="${LAUNCHER_NAME}_macos"
+            TARGET_FILENAME_DMG="${TARGET_FILENAME}.dmg"
+            hdiutil create "$TARGET_FILENAME_DMG" -ov -volname "$LAUNCHER_NAME" -fs HFS+ -srcfolder "launcher"
+            mv "$TARGET_FILENAME_DMG" launcher/
+            SHA1SUM="shasum"
+          else
+            echo "Unsupported OS: ${{ matrix.os }}"
+            exit 1
+          fi
+          mv launcher/"$LAUNCHER_NAME" launcher/"$TARGET_FILENAME" || true
+          $SHA1SUM launcher/$TARGET_FILENAME | cut -f1 -d ' ' > launcher/$TARGET_FILENAME.sha1
+
+      - if: ${{ github.ref }} == rewrite-in-rust
+        env:
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_ADDR: ${{ secrets.SERVER_ADDR }}
+          SERVER_PATH: ${{ secrets.SERVER_PATH }}
+        run: scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null launcher/* $SERVER_USER@$SERVER_ADDR:$SERVER_PATH/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: launcher-${{ matrix.os }}
+          path: launcher/*
