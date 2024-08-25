@@ -15,6 +15,7 @@ use super::task::Task;
 #[derive(Clone, PartialEq)]
 pub enum JavaDownloadStatus {
     NotDownloaded,
+    NeedDownload,
     Downloaded,
     DownloadError(String),
 }
@@ -59,14 +60,25 @@ pub struct JavaState {
     status: JavaDownloadStatus,
     java_download_task: Option<Task<JavaDownloadResult>>,
     java_download_progress_bar: Arc<GuiProgressBar>,
+    settings_opened: bool,
+    picked_java_path: Option<String>,
+    selected_xmx: Option<String>,
 }
 
 impl JavaState {
     pub fn new(ctx: &egui::Context) -> Self {
+        let java_download_progress_bar = Arc::new(GuiProgressBar::new(ctx));
+        java_download_progress_bar.set_unit(crate::progress::Unit {
+            name: "MB".to_string(),
+            size: 1024 * 1024,
+        });
         Self {
             status: JavaDownloadStatus::NotDownloaded,
             java_download_task: None,
-            java_download_progress_bar: Arc::new(GuiProgressBar::new(ctx)),
+            java_download_progress_bar,
+            settings_opened: false,
+            picked_java_path: None,
+            selected_xmx: None,
         }
     }
 
@@ -98,26 +110,25 @@ impl JavaState {
         need_java_check: bool,
     ) {
         if need_java_check {
-            self.status = JavaDownloadStatus::NotDownloaded;
-        }
-
-        if self.status == JavaDownloadStatus::NotDownloaded && self.java_download_task.is_none() {
-            if need_java_check || config.java_paths.get(&index.modpack_name).is_none() {
-                self.check_java(index, config);
-            }
-
+            self.java_download_task = None;
+            self.check_java(index, config);
             if config.java_paths.get(&index.modpack_name).is_some() {
                 self.status = JavaDownloadStatus::Downloaded;
+            } else {
+                self.status = JavaDownloadStatus::NotDownloaded;
             }
 
+            self.settings_opened = false;
+        }
+
+        if self.status == JavaDownloadStatus::NeedDownload && self.java_download_task.is_none() {
             if config.java_paths.get(&index.modpack_name).is_none() {
                 let java_dir = runtime_config::get_java_dir(config);
-                let java_download_progress_bar = self.java_download_progress_bar.clone();
                 let java_download_task = download_java(
                     runtime,
                     &index.java_version,
                     &java_dir,
-                    java_download_progress_bar,
+                    self.java_download_progress_bar.clone(),
                 );
                 self.java_download_progress_bar.reset();
                 self.java_download_task = Some(java_download_task);
@@ -146,51 +157,146 @@ impl JavaState {
         }
     }
 
+    fn get_download_button_text(
+        &self,
+        selected_index: &ModpackIndex,
+        config: &runtime_config::Config,
+    ) -> egui::Button {
+        egui::Button::new(
+            LangMessage::DownloadJava {
+                version: selected_index.java_version.clone(),
+            }
+            .to_string(&config.lang),
+        )
+    }
+
     pub fn render_ui(
         &mut self,
         ui: &mut egui::Ui,
-        config: &runtime_config::Config,
+        config: &mut runtime_config::Config,
         selected_index: &ModpackIndex,
     ) {
+        match self.status {
+            JavaDownloadStatus::NotDownloaded => {
+                ui.label(
+                    LangMessage::NeedJava {
+                        version: selected_index.java_version.clone(),
+                    }
+                    .to_string(&config.lang),
+                );
+            }
+            JavaDownloadStatus::NeedDownload => {} // message is shown in progress bar
+            JavaDownloadStatus::DownloadError(ref e) => {
+                ui.label(LangMessage::ErrorDownloadingJava(e.clone()).to_string(&config.lang));
+            }
+            JavaDownloadStatus::Downloaded => {
+                ui.label(
+                    LangMessage::JavaInstalled {
+                        version: selected_index.java_version.clone(),
+                    }
+                    .to_string(&config.lang),
+                );
+            }
+        }
+
+        let mut show_download_button = false;
         if self.java_download_task.is_some() {
             let progress_bar_state = self.java_download_progress_bar.get_state();
             if let Some(message) = &progress_bar_state.message {
                 ui.label(message.to_string(&config.lang));
             }
+
+            let unit_size = progress_bar_state.unit.as_ref().unwrap().size as f32;
+            let progress = progress_bar_state.progress as f32 / unit_size;
+            let total = progress_bar_state.total as f32 / unit_size;
             egui::ProgressBar::new(
                 progress_bar_state.progress as f32 / progress_bar_state.total as f32,
             )
             .text(format!(
-                "{} / {}",
-                &progress_bar_state.progress, &progress_bar_state.total
+                "{} / {} {}",
+                progress,
+                total,
+                progress_bar_state.unit.as_ref().unwrap().name
             ))
             .ui(ui);
         } else if self.status != JavaDownloadStatus::Downloaded {
-            if ui
-                .button(
-                    LangMessage::DownloadJava {
-                        version: selected_index.java_version.clone(),
-                    }
-                    .to_string(&config.lang),
-                )
-                .clicked()
-            {
-                self.status = JavaDownloadStatus::NotDownloaded;
-            }
+            show_download_button = true;
         }
 
-        if config
-            .java_paths
-            .get(&selected_index.modpack_name)
-            .is_some()
-        {
-            ui.label(
-                LangMessage::JavaInstalled {
-                    version: selected_index.java_version.clone(),
+        ui.horizontal(|ui| {
+            if show_download_button {
+                if self
+                    .get_download_button_text(selected_index, config)
+                    .ui(ui)
+                    .clicked()
+                {
+                    self.status = JavaDownloadStatus::NeedDownload;
                 }
-                .to_string(&config.lang),
-            );
-        }
+            }
+            if ui
+                .button(LangMessage::JavaSettings.to_string(&config.lang))
+                .clicked()
+            {
+                self.settings_opened = true;
+
+                self.picked_java_path = Some(
+                    config
+                        .java_paths
+                        .get(&selected_index.modpack_name)
+                        .unwrap()
+                        .clone(),
+                );
+                self.selected_xmx = Some(config.xmx.clone());
+            }
+        });
+
+        self.render_settings_window(ui, config, selected_index);
+    }
+
+    fn render_settings_window(
+        &mut self,
+        ui: &mut egui::Ui,
+        config: &mut runtime_config::Config,
+        selected_index: &ModpackIndex,
+    ) {
+        egui::Window::new(LangMessage::JavaSettings.to_string(&config.lang))
+            .open(&mut self.settings_opened)
+            .show(ui.ctx(), |ui| {
+                ui.label(
+                    LangMessage::SelectedJavaPath {
+                        path: self.picked_java_path.clone(),
+                    }
+                    .to_string(&config.lang),
+                );
+
+                if ui
+                    .button(LangMessage::SelectJavaPath.to_string(&config.lang))
+                    .clicked()
+                {
+                    if let Some(path) = rfd::FileDialog::new().pick_file() {
+                        if java::check_java(&selected_index.java_version, &path) {
+                            self.picked_java_path = Some(path.display().to_string());
+                            config.java_paths.insert(
+                                selected_index.modpack_name.clone(),
+                                path.display().to_string(),
+                            );
+                            runtime_config::save_config(config);
+                        } else {
+                            self.picked_java_path = None;
+                        }
+                    }
+                }
+
+                ui.label(LangMessage::JavaXMX.to_string(&config.lang));
+                ui.text_edit_singleline(self.selected_xmx.as_mut().unwrap());
+
+                if runtime_config::validate_xmx(self.selected_xmx.as_ref().unwrap())
+                    && config.xmx != self.selected_xmx.as_ref().unwrap().as_str()
+                {
+                    config.xmx = self.selected_xmx.as_ref().unwrap().clone();
+                    runtime_config::save_config(config);
+                }
+            });
     }
 
     pub fn ready_for_launch(&self) -> bool {

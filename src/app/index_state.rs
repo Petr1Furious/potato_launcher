@@ -175,4 +175,8 @@ impl IndexState {
                 .find(|x| Some(&x.modpack_name) == config.modpack_name.as_ref())
         });
     }
+
+    pub fn online(&self) -> bool {
+        self.status == FetchStatus::FetchedRemote
+    }
 }

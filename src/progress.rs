@@ -5,6 +5,12 @@ use tokio::sync::Semaphore;
 
 use crate::lang::LangMessage;
 
+#[derive(Clone)]
+pub struct Unit {
+    pub name: String,
+    pub size: u64,
+}
+
 pub trait ProgressBar: Sync + Send {
     fn set_message(&self, message: LangMessage);
 
@@ -17,6 +23,8 @@ pub trait ProgressBar: Sync + Send {
     fn reset(&self) {
         self.set_length(0);
     }
+
+    fn set_unit(&self, unit: Unit);
 }
 
 pub type TaskFutureResult = Result<u64, Box<dyn std::error::Error + Send + Sync>>;

@@ -102,13 +102,14 @@ impl ModpackSyncState {
         selected_index: &ModpackIndex,
         config: &runtime_config::Config,
         need_modpack_check: bool,
+        index_online: bool,
     ) {
         if need_modpack_check {
             self.status = ModpackSyncStatus::NotSynced;
         }
 
         if self.status == ModpackSyncStatus::NotSynced {
-            if self.is_up_to_date(selected_index) {
+            if self.is_up_to_date(selected_index) && index_online {
                 self.status = ModpackSyncStatus::Synced;
             }
         }
@@ -151,7 +152,15 @@ impl ModpackSyncState {
         }
     }
 
-    pub fn render_ui(&mut self, ui: &mut egui::Ui, config: &mut runtime_config::Config) {
+    pub fn render_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        config: &mut runtime_config::Config,
+        index_online: bool,
+    ) {
+        if !index_online {
+            return;
+        }
         if ui
             .button(LangMessage::SyncModpack.to_string(&config.lang))
             .clicked()

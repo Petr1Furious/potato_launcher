@@ -104,3 +104,23 @@ pub fn save_config(config: &Config) {
     let config_path = get_config_path();
     std::fs::write(&config_path, config_str).expect("Failed to write config file");
 }
+
+pub fn validate_xmx(xmx: &str) -> bool {
+    let xmx = xmx.trim();
+    if xmx.is_empty() {
+        return false;
+    }
+
+    let xmx = xmx.to_uppercase();
+    if xmx.ends_with("M") {
+        if let Ok(xmx) = xmx[..xmx.len() - 1].parse::<u32>() {
+            return xmx >= constants::MIN_JAVA_MB && xmx <= constants::MAX_JAVA_MB;
+        }
+    } else if xmx.ends_with("G") {
+        if let Ok(xmx) = xmx[..xmx.len() - 1].parse::<u32>() {
+            return xmx >= constants::MIN_JAVA_MB * 1024 && xmx <= constants::MAX_JAVA_MB * 1024;
+        }
+    }
+
+    return false;
+}

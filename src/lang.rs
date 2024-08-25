@@ -31,6 +31,12 @@ pub enum LangMessage {
     DownloadingJava,
     DownloadJava { version: String },
     JavaInstalled { version: String },
+    NeedJava { version: String },
+    ErrorDownloadingJava(String),
+    JavaSettings,
+    SelectedJavaPath { path: Option<String> },
+    JavaXMX,
+    SelectJavaPath,
     Launch,
     LaunchError(String),
     Running,
@@ -54,11 +60,11 @@ impl LangMessage {
                 offline_username: username,
             } => match lang {
                 Lang::English => format!(
-                    "No connection to the authorization server, offline username: {}",
+                    "No connection to the authorization server.\nOffline username: {}",
                     username.as_ref().unwrap_or(&"None".to_string())
                 ),
                 Lang::Russian => format!(
-                    "Нет подключения к серверу авторизации, офлайн имя пользователя: {}",
+                    "Нет подключения к серверу авторизации.\nОфлайн имя пользователя: {}",
                     username.as_ref().unwrap_or(&"Отсутствует".to_string())
                 ),
             },
@@ -145,6 +151,36 @@ impl LangMessage {
             LangMessage::JavaInstalled { version } => match lang {
                 Lang::English => format!("Java {} installed", version),
                 Lang::Russian => format!("Java {} установлена", version),
+            },
+            LangMessage::NeedJava { version } => match lang {
+                Lang::English => format!("Java {} not installed", version),
+                Lang::Russian => format!("Java {} не установлена", version),
+            },
+            LangMessage::ErrorDownloadingJava(e) => match lang {
+                Lang::English => format!("Error downloading Java: {}", e),
+                Lang::Russian => format!("Ошибка загрузки Java: {}", e),
+            },
+            LangMessage::JavaSettings => match lang {
+                Lang::English => "Java Settings".to_string(),
+                Lang::Russian => "Настройки Java".to_string(),
+            },
+            LangMessage::SelectedJavaPath { path } => match lang {
+                Lang::English => format!(
+                    "Selected Java path:\n{}",
+                    path.as_ref().unwrap_or(&"Error".to_string())
+                ),
+                Lang::Russian => format!(
+                    "Выбранный путь к Java:\n{}",
+                    path.as_ref().unwrap_or(&"Ошибка".to_string())
+                ),
+            },
+            LangMessage::JavaXMX => match lang {
+                Lang::English => "Java XMX".to_string(),
+                Lang::Russian => "Java XMX".to_string(),
+            },
+            LangMessage::SelectJavaPath => match lang {
+                Lang::English => "Select Java path".to_string(),
+                Lang::Russian => "Выберите путь к Java".to_string(),
             },
             LangMessage::Launch => match lang {
                 Lang::English => "Launch".to_string(),

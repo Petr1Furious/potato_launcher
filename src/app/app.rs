@@ -78,11 +78,13 @@ impl LauncherApp {
                     need_modpack_check = true;
                 }
 
+                let index_online = self.index_state.online();
                 self.modpack_sync_state.update(
                     &self.runtime,
                     &selected_modpack,
                     &self.config,
                     need_modpack_check,
+                    index_online,
                 );
                 self.java_state.update(
                     &self.runtime,
@@ -92,12 +94,13 @@ impl LauncherApp {
                 );
 
                 self.java_state
-                    .render_ui(ui, &self.config, &selected_modpack);
-                self.modpack_sync_state.render_ui(ui, &mut self.config);
+                    .render_ui(ui, &mut self.config, &selected_modpack);
+                self.modpack_sync_state
+                    .render_ui(ui, &mut self.config, index_online);
 
                 if self.auth_state.ready_for_launch(&self.config)
                     && self.java_state.ready_for_launch()
-                    && self.modpack_sync_state.ready_for_launch()
+                    && (self.modpack_sync_state.ready_for_launch() || !index_online)
                 {
                     self.launcher.update();
                     self.launcher.render_ui(

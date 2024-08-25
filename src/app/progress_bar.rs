@@ -1,4 +1,7 @@
-use crate::{lang::LangMessage, progress::ProgressBar};
+use crate::{
+    lang::LangMessage,
+    progress::{ProgressBar, Unit},
+};
 use std::sync::{Arc, Mutex};
 
 pub struct GuiProgressBar {
@@ -13,6 +16,7 @@ pub struct ProgressBarState {
     pub total: u64,
     pub message: Option<LangMessage>,
     pub finished: bool,
+    pub unit: Option<Unit>,
 }
 
 impl GuiProgressBar {
@@ -23,6 +27,7 @@ impl GuiProgressBar {
                 total: 0,
                 message: None,
                 finished: false,
+                unit: None,
             })),
             ctx: ctx.clone(),
             last_update: Arc::new(Mutex::new(std::time::Instant::now())),
@@ -66,5 +71,10 @@ impl ProgressBar for GuiProgressBar {
         let mut state = self.state.lock().unwrap();
         state.finished = true;
         self.ctx.request_repaint();
+    }
+
+    fn set_unit(&self, unit: Unit) {
+        let mut state = self.state.lock().unwrap();
+        state.unit = Some(unit);
     }
 }
