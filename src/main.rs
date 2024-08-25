@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod app;
 mod auth;
 mod config;
@@ -11,7 +13,6 @@ mod progress;
 mod utils;
 
 use config::runtime_config;
-use tokio;
 
 fn main() {
     utils::set_sigint_handler();
