@@ -35,3 +35,10 @@ pub fn get_elyby_client_secret() -> Option<String> {
         None => None,
     }
 }
+
+pub fn get_version() -> Option<String> {
+    match VERSION {
+        Some(version) => Some(version.to_string()),
+        None => None,
+    }
+}

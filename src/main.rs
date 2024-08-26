@@ -10,6 +10,7 @@ mod launcher;
 mod message_provider;
 mod modpack;
 mod progress;
+mod update_app;
 mod utils;
 
 use config::runtime_config;
@@ -17,11 +18,9 @@ use config::runtime_config;
 fn main() {
     utils::set_sigint_handler();
 
-    let update_runtime = tokio::runtime::Runtime::new().unwrap();
-    if let Err(e) = update_runtime.block_on(launcher::update::auto_update()) {
-        eprintln!("Error updating: {}", e);
-    }
-
     let config = runtime_config::load_config();
+
+    update_app::app::run_gui(&config);
+
     app::app::run_gui(config);
 }

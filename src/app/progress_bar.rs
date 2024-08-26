@@ -1,5 +1,7 @@
+use egui::Widget as _;
+
 use crate::{
-    lang::LangMessage,
+    lang::{Lang, LangMessage},
     progress::{ProgressBar, Unit},
 };
 use std::sync::{Arc, Mutex};
@@ -76,5 +78,37 @@ impl ProgressBar for GuiProgressBar {
     fn set_unit(&self, unit: Unit) {
         let mut state = self.state.lock().unwrap();
         state.unit = Some(unit);
+    }
+}
+
+impl GuiProgressBar {
+    pub fn render(&self, ui: &mut egui::Ui, lang: &Lang) {
+        let progress_bar_state = self.get_state();
+        if let Some(message) = &progress_bar_state.message {
+            ui.label(message.to_string(lang));
+        }
+
+        let unit_size = progress_bar_state
+            .unit
+            .as_ref()
+            .map(|u| u.size as f32)
+            .unwrap_or(1.0);
+        let unit_name = progress_bar_state.unit.map(|u| u.name);
+
+        let progress_string = if let Some(unit_name) = unit_name {
+            let progress = progress_bar_state.progress as f32 / unit_size;
+            let total = progress_bar_state.total as f32 / unit_size;
+            format!("{:.2} / {:.2} {}", progress, total, unit_name)
+        } else {
+            format!(
+                "{} / {}",
+                progress_bar_state.progress, progress_bar_state.total
+            )
+        };
+        egui::ProgressBar::new(
+            progress_bar_state.progress as f32 / progress_bar_state.total as f32,
+        )
+        .text(progress_string)
+        .ui(ui);
     }
 }

@@ -7,7 +7,7 @@ use crate::config::runtime_config;
 use crate::lang::LangMessage;
 use crate::launcher::java;
 use crate::modpack::index::ModpackIndex;
-use crate::progress::ProgressBar;
+use crate::progress::{ProgressBar, Unit};
 
 use super::progress_bar::GuiProgressBar;
 use super::task::Task;
@@ -68,7 +68,7 @@ pub struct JavaState {
 impl JavaState {
     pub fn new(ctx: &egui::Context) -> Self {
         let java_download_progress_bar = Arc::new(GuiProgressBar::new(ctx));
-        java_download_progress_bar.set_unit(crate::progress::Unit {
+        java_download_progress_bar.set_unit(Unit {
             name: "MB".to_string(),
             size: 1024 * 1024,
         });
@@ -201,24 +201,7 @@ impl JavaState {
 
         let mut show_download_button = false;
         if self.java_download_task.is_some() {
-            let progress_bar_state = self.java_download_progress_bar.get_state();
-            if let Some(message) = &progress_bar_state.message {
-                ui.label(message.to_string(&config.lang));
-            }
-
-            let unit_size = progress_bar_state.unit.as_ref().unwrap().size as f32;
-            let progress = progress_bar_state.progress as f32 / unit_size;
-            let total = progress_bar_state.total as f32 / unit_size;
-            egui::ProgressBar::new(
-                progress_bar_state.progress as f32 / progress_bar_state.total as f32,
-            )
-            .text(format!(
-                "{} / {} {}",
-                progress,
-                total,
-                progress_bar_state.unit.as_ref().unwrap().name
-            ))
-            .ui(ui);
+            self.java_download_progress_bar.render(ui, &config.lang);
         } else if self.status != JavaDownloadStatus::Downloaded {
             show_download_button = true;
         }

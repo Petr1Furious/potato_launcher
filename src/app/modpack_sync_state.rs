@@ -1,4 +1,3 @@
-use egui::Widget;
 use std::path::Path;
 use std::sync::{mpsc, Arc};
 use tokio::runtime::Runtime;
@@ -182,18 +181,7 @@ impl ModpackSyncState {
         });
 
         if self.modpack_sync_task.is_some() {
-            let progress_bar_state = self.modpack_sync_progress_bar.get_state();
-            if let Some(message) = progress_bar_state.message {
-                ui.label(message.to_string(&config.lang));
-            }
-            egui::ProgressBar::new(
-                progress_bar_state.progress as f32 / progress_bar_state.total as f32,
-            )
-            .text(format!(
-                "{} / {}",
-                &progress_bar_state.progress, &progress_bar_state.total
-            ))
-            .ui(ui);
+            self.modpack_sync_progress_bar.render(ui, &config.lang);
         }
     }
 

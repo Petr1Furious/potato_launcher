@@ -1,12 +1,19 @@
+use futures::StreamExt as _;
 use reqwest::Client;
-use sha1::{Digest, Sha1};
 use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
 use std::process::Stdio;
+use std::sync::Arc;
 
 use crate::config::build_config;
+use crate::lang::LangMessage;
+use crate::progress::ProgressBar;
+
+lazy_static::lazy_static! {
+    static ref VERSION_URL: String = format!("{}/launcher/version.txt", build_config::get_server_base());
+}
 
 #[cfg(target_os = "windows")]
 lazy_static::lazy_static! {
@@ -25,41 +32,43 @@ lazy_static::lazy_static! {
     static ref UPDATE_URL: String = format!("{}/launcher/{}", build_config::get_server_base(), *LAUNCHER_BINARY_NAME);
 }
 
-async fn fetch_new_binary() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+async fn fetch_new_version() -> Result<String, Box<dyn std::error::Error>> {
+    let client = Client::new();
+    let response = client.get(&*VERSION_URL).send().await?.error_for_status()?;
+    let text = response.text().await?;
+    Ok(text.trim().to_string())
+}
+
+pub async fn need_update() -> Result<bool, Box<dyn std::error::Error>> {
+    let new_version = fetch_new_version().await?;
+    let current_version = build_config::get_version().expect("Version not set");
+    Ok(new_version != current_version)
+}
+
+pub async fn fetch_new_binary(
+    progress_bar: Arc<dyn ProgressBar + Send + Sync>,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let client = Client::new();
     let response = client
         .get(UPDATE_URL.as_str())
         .send()
         .await?
         .error_for_status()?;
-    let bytes = response.bytes().await?;
-    Ok(bytes.to_vec())
-}
 
-async fn fetch_new_hash() -> Result<String, Box<dyn std::error::Error>> {
-    let client = Client::new();
-    let hash_url = format!("{}.sha1", UPDATE_URL.as_str());
-    let response = client
-        .get(hash_url.as_str())
-        .send()
-        .await?
-        .error_for_status()?;
-    let text = response.text().await?;
-    Ok(text.trim().to_string())
-}
+    let total_size = response.content_length().unwrap_or(0);
+    progress_bar.set_length(total_size);
+    progress_bar.set_message(LangMessage::DownloadingUpdate);
 
-fn calculate_hash(data: &[u8]) -> String {
-    let mut hasher = Sha1::new();
-    hasher.update(data);
-    format!("{:x}", hasher.finalize())
-}
+    let mut bytes = Vec::with_capacity(total_size as usize);
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        bytes.extend_from_slice(&chunk);
+        progress_bar.inc(chunk.len() as u64);
+    }
+    progress_bar.finish();
 
-async fn different_binaries() -> Result<bool, Box<dyn std::error::Error>> {
-    let current_exe = env::current_exe()?;
-    let new_hash = fetch_new_hash().await?;
-    let current_binary = fs::read(&current_exe)?;
-    let current_hash = calculate_hash(&current_binary);
-    Ok(new_hash != current_hash)
+    Ok(bytes)
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -73,7 +82,9 @@ fn replace_binary(current_path: &Path, new_binary: &[u8]) -> std::io::Result<()>
 
 #[cfg(target_os = "windows")]
 fn replace_binary(current_path: &Path, new_binary: &[u8]) -> std::io::Result<()> {
-    let temp_path = current_path.with_extension("tmp");
+    use crate::utils;
+
+    let temp_path = utils::get_temp_dir().join("update.exe");
     fs::write(&temp_path, new_binary)?;
     Command::new("cmd")
         .args(&[
@@ -87,26 +98,15 @@ fn replace_binary(current_path: &Path, new_binary: &[u8]) -> std::io::Result<()>
     Ok(())
 }
 
-pub async fn auto_update() -> Result<(), Box<dyn std::error::Error>> {
-    if env::var("CARGO").is_ok() {
-        println!("Running from cargo, skipping auto-update");
-        return Ok(());
-    }
-
+pub fn replace_binary_and_launch(new_binary: &[u8]) -> std::io::Result<()> {
     let current_exe = env::current_exe()?;
-    let new_binary = fetch_new_binary().await?;
-
-    if different_binaries().await? {
-        replace_binary(&current_exe, &new_binary)?;
-        let args: Vec<String> = env::args().collect();
-        let mut new_process = Command::new(&current_exe)
-            .args(&args[1..])
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .spawn()?;
-        new_process.wait()?;
-        std::process::exit(0);
-    }
-
-    Ok(())
+    replace_binary(&current_exe, &new_binary)?;
+    let args: Vec<String> = env::args().collect();
+    let mut new_process = Command::new(&current_exe)
+        .args(&args[1..])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()?;
+    let result = new_process.wait()?;
+    std::process::exit(result.code().unwrap_or(1));
 }

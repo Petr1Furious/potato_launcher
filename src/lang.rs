@@ -42,6 +42,12 @@ pub enum LangMessage {
     Running,
     Language,
     LanguageName,
+    DownloadingUpdate,
+    CheckingForUpdates,
+    Launching,
+    ErrorCheckingForUpdates(String),
+    ErrorDownloadingUpdate(String),
+    Close,
 }
 
 impl LangMessage {
@@ -201,6 +207,30 @@ impl LangMessage {
             LangMessage::LanguageName => match lang {
                 Lang::English => "English".to_string(),
                 Lang::Russian => "Русский".to_string(),
+            },
+            LangMessage::DownloadingUpdate => match lang {
+                Lang::English => "Downloading update...".to_string(),
+                Lang::Russian => "Загрузка обновления...".to_string(),
+            },
+            LangMessage::CheckingForUpdates => match lang {
+                Lang::English => "Checking for updates...".to_string(),
+                Lang::Russian => "Проверка обновлений...".to_string(),
+            },
+            LangMessage::Launching => match lang {
+                Lang::English => "Launching...".to_string(),
+                Lang::Russian => "Запуск...".to_string(),
+            },
+            LangMessage::ErrorCheckingForUpdates(e) => match lang {
+                Lang::English => format!("Error checking for updates: {}", e),
+                Lang::Russian => format!("Ошибка проверки обновлений: {}", e),
+            },
+            LangMessage::ErrorDownloadingUpdate(e) => match lang {
+                Lang::English => format!("Error downloading update: {}", e),
+                Lang::Russian => format!("Ошибка загрузки обновления: {}", e),
+            },
+            LangMessage::Close => match lang {
+                Lang::English => "Close".to_string(),
+                Lang::Russian => "Закрыть".to_string(),
             },
         }
     }

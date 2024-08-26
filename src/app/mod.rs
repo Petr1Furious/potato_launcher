@@ -5,5 +5,5 @@ mod java_state;
 mod language_selector;
 mod launcher;
 mod modpack_sync_state;
-mod progress_bar;
+pub mod progress_bar;
 mod task;

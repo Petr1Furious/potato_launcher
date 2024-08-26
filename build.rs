@@ -9,6 +9,7 @@ fn main() {
         "ELYBY_APP_NAME",
         "ELYBY_CLIENT_ID",
         "ELYBY_CLIENT_SECRET",
+        "VERSION",
     ];
 
     let out_dir = env::var("OUT_DIR").unwrap();
@@ -30,7 +31,10 @@ fn main() {
 
     if cfg!(target_os = "windows") {
         let mut res = winres::WindowsResource::new();
-        res.set_icon(&format!("assets/{}.ico", env::var("LAUNCHER_NAME").unwrap()));
+        res.set_icon(&format!(
+            "assets/{}.ico",
+            env::var("LAUNCHER_NAME").unwrap()
+        ));
         res.compile().unwrap();
     }
 }
