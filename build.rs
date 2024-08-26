@@ -27,4 +27,10 @@ fn main() {
         ));
     }
     fs::write(dest_path, config_content).unwrap();
+
+    if cfg!(target_os = "windows") {
+        let mut res = winres::WindowsResource::new();
+        res.set_icon(&format!("assets/{}.ico", env::var("LAUNCHER_NAME").unwrap()));
+        res.compile().unwrap();
+    }
 }
