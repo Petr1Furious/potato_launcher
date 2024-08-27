@@ -39,45 +39,27 @@ jobs:
 
       - name: Build the launcher
         run: |
-          if [ "${{ matrix.os }}" != "macos-latest" ]; then
-            cargo build --release
-          fi
-
-          if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            BINARY_PATH="target/release/potato_launcher.exe"
-          else
-            BINARY_PATH="target/release/potato_launcher"
-          fi
-
-          if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            TARGET_FILENAME="${LAUNCHER_NAME}.exe"
-          elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-            TARGET_FILENAME="${LAUNCHER_NAME}_linux"
-          elif [ "${{ matrix.os }}" == "macos-latest" ]; then
-            TARGET_FILENAME="${LAUNCHER_NAME}_macos"
-          else
-            echo "Unsupported OS: ${{ matrix.os }}"
-            exit 1
-          fi
-
           mkdir -p launcher
-          if [ "${{ matrix.os }}" != "macos-latest" ]; then
-            mv "$BINARY_PATH" launcher/"$TARGET_FILENAME"
-          else
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            cargo build --release
+            mv "target/release/${LAUNCHER_NAME}.exe" "launcher/${LAUNCHER_NAME}.exe"
+          elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+            cargo build --release
+            mv "target/release/${LAUNCHER_NAME}" "launcher/${LAUNCHER_NAME}"
+          elif [ "${{ matrix.os }}" == "macos-latest" ]; then
             mkdir -p icon.iconset
-            sips -z 16 16     assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_16x16.png
-            sips -z 32 32     assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_16x16@2x.png
-            sips -z 32 32     assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_32x32.png
-            sips -z 64 64     assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_32x32@2x.png
-            sips -z 64 64     assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_64x64.png
-            sips -z 128 128   assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_64x64@2x.png
-            sips -z 128 128   assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_128x128.png
-            sips -z 256 256   assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_128x128@2x.png
-            sips -z 256 256   assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_256x256.png
-            sips -z 512 512   assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_256x256@2x.png
-            sips -z 512 512   assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_512x512.png
-            sips -z 1024 1024 assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_512x512@2x.png
-
+            sips -z 16 16     "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_16x16.png
+            sips -z 32 32     "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_16x16@2x.png
+            sips -z 32 32     "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_32x32.png
+            sips -z 64 64     "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_32x32@2x.png
+            sips -z 64 64     "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_64x64.png
+            sips -z 128 128   "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_64x64@2x.png
+            sips -z 128 128   "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_128x128.png
+            sips -z 256 256   "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_128x128@2x.png
+            sips -z 256 256   "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_256x256.png
+            sips -z 512 512   "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_256x256@2x.png
+            sips -z 512 512   "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_512x512.png
+            sips -z 1024 1024 "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_512x512@2x.png
             iconutil -c icns icon.iconset -o assets/icon.icns
 
             cargo install cargo-bundle
@@ -97,20 +79,23 @@ jobs:
 
           echo "$VERSION" > launcher/version.txt
 
-      - if: ${{ github.ref }} == rewrite-in-rust
+      - name: Upload to server
+        if: github.ref == 'refs/heads/rewrite-in-rust'
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_KEY }}
           known_hosts: no
 
-      - if: ${{ github.ref }} == rewrite-in-rust
+      - name: Deploy to server
+        if: github.ref == 'refs/heads/rewrite-in-rust'
         env:
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_ADDR: ${{ secrets.SERVER_ADDR }}
           SERVER_PATH: ${{ secrets.SERVER_PATH }}
         run: scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null launcher/* $SERVER_USER@$SERVER_ADDR:$SERVER_PATH/
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: launcher-${{ matrix.os }}
           path: launcher/*
