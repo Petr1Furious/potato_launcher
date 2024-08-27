@@ -21,11 +21,17 @@ fn main() {
         config_content.push_str(&format!("pub const {}: &str = \"{}\";\n", env, value));
     }
     for env in optional_envs.iter() {
-        let value = env::var(env).unwrap_or_default();
-        config_content.push_str(&format!(
-            "pub const {}: Option<&str> = Some(\"{}\");\n",
-            env, value
-        ));
+        match env::var(env) {
+            Ok(value) => {
+                config_content.push_str(&format!(
+                    "pub const {}: Option<&str> = Some(\"{}\");\n",
+                    env, value
+                ));
+            }
+            Err(_) => {
+                config_content.push_str(&format!("pub const {}: Option<&str> = None;\n", env));
+            }
+        }
     }
     fs::write(dest_path, config_content).unwrap();
 

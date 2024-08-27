@@ -1,7 +1,6 @@
 use futures::StreamExt as _;
 use reqwest::Client;
 use std::env;
-use std::fs;
 use std::path::Path;
 use std::process::Command;
 use std::process::Stdio;
@@ -10,6 +9,7 @@ use std::sync::Arc;
 use crate::config::build_config;
 use crate::lang::LangMessage;
 use crate::progress::ProgressBar;
+use crate::utils;
 
 lazy_static::lazy_static! {
     static ref VERSION_URL: String = format!("{}/launcher/version.txt", build_config::get_server_base());
@@ -45,7 +45,7 @@ pub async fn need_update() -> Result<bool, Box<dyn std::error::Error>> {
     Ok(new_version != current_version)
 }
 
-pub async fn fetch_new_binary(
+pub async fn download_new_binary(
     progress_bar: Arc<dyn ProgressBar + Send + Sync>,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let client = Client::new();
@@ -72,19 +72,23 @@ pub async fn fetch_new_binary(
 }
 
 #[cfg(not(target_os = "windows"))]
-fn replace_binary(current_path: &Path, new_binary: &[u8]) -> std::io::Result<()> {
+fn replace_binary(current_exe: &Path, new_binary: &[u8]) -> std::io::Result<()> {
     use super::compat::chmod_x;
 
-    fs::write(current_path, new_binary)?;
-    chmod_x(current_path);
+    let temp_path =
+        utils::get_temp_dir().join(format!("{}-new", build_config::get_launcher_name()));
+    std::fs::write(&temp_path, new_binary)?;
+    chmod_x(&temp_path)?;
+    std::fs::rename(temp_path, current_exe)?;
     Ok(())
 }
 
 #[cfg(target_os = "windows")]
 fn replace_binary(current_path: &Path, new_binary: &[u8]) -> std::io::Result<()> {
-    use crate::utils;
+    use std::fs;
 
-    let temp_path = utils::get_temp_dir().join("update.exe");
+    let temp_path =
+        utils::get_temp_dir().join(format!("{}-new.exe", build_config::get_launcher_name()));
     fs::write(&temp_path, new_binary)?;
     Command::new("cmd")
         .args(&[
@@ -102,11 +106,10 @@ pub fn replace_binary_and_launch(new_binary: &[u8]) -> std::io::Result<()> {
     let current_exe = env::current_exe()?;
     replace_binary(&current_exe, &new_binary)?;
     let args: Vec<String> = env::args().collect();
-    let mut new_process = Command::new(&current_exe)
+    Command::new(&current_exe)
         .args(&args[1..])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .spawn()?;
-    let result = new_process.wait()?;
-    std::process::exit(result.code().unwrap_or(1));
+    std::process::exit(0);
 }

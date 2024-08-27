@@ -2,14 +2,15 @@
 use std::path::Path;
 
 #[cfg(not(target_os = "windows"))]
-pub fn chmod_x<P: AsRef<Path>>(path: P) {
+pub fn chmod_x<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
 
     let path = path.as_ref();
-    let mut perms = fs::metadata(path).unwrap().permissions();
+    let mut perms = fs::metadata(path)?.permissions();
     perms.set_mode(perms.mode() | 0o111);
-    fs::set_permissions(path, perms).unwrap();
+    fs::set_permissions(path, perms)?;
+    Ok(())
 }
 
 #[cfg(target_os = "windows")]

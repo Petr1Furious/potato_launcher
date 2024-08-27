@@ -47,7 +47,7 @@ pub enum LangMessage {
     Launching,
     ErrorCheckingForUpdates(String),
     ErrorDownloadingUpdate(String),
-    Close,
+    ProceedToLauncher,
 }
 
 impl LangMessage {
@@ -228,9 +228,9 @@ impl LangMessage {
                 Lang::English => format!("Error downloading update: {}", e),
                 Lang::Russian => format!("Ошибка загрузки обновления: {}", e),
             },
-            LangMessage::Close => match lang {
-                Lang::English => "Close".to_string(),
-                Lang::Russian => "Закрыть".to_string(),
+            LangMessage::ProceedToLauncher => match lang {
+                Lang::English => "Proceed to launcher".to_string(),
+                Lang::Russian => "Перейти к лаунчеру".to_string(),
             },
         }
     }

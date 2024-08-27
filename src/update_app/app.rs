@@ -10,7 +10,7 @@ use crate::config::build_config;
 use crate::config::runtime_config;
 use crate::lang::Lang;
 use crate::lang::LangMessage;
-use crate::launcher::update::fetch_new_binary;
+use crate::launcher::update::download_new_binary;
 use crate::launcher::update::need_update;
 use crate::launcher::update::replace_binary_and_launch;
 use crate::progress::ProgressBar;
@@ -23,8 +23,9 @@ enum UpdateStatus {
     Error(String),
 }
 
-enum FetchStatus {
-    NeedFetching,
+enum DownloadStatus {
+    NeedDownloading,
+    Downloaded(Vec<u8>),
     Error(String),
 }
 
@@ -32,10 +33,10 @@ pub struct UpdateApp {
     runtime: Runtime,
     lang: Lang,
     need_update_receiver: mpsc::Receiver<UpdateStatus>,
-    new_binary_receiver: Option<mpsc::Receiver<Vec<u8>>>,
+    new_binary_receiver: Option<mpsc::Receiver<DownloadStatus>>,
     update_progress_bar: Arc<GuiProgressBar>,
     update_status: UpdateStatus,
-    fetch_status: FetchStatus,
+    download_status: DownloadStatus,
 }
 
 pub fn run_gui(config: &runtime_config::Config) {
@@ -50,6 +51,7 @@ pub fn run_gui(config: &runtime_config::Config) {
     }
 
     let native_options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_inner_size((400.0, 300.0)),
         ..Default::default()
     };
 
@@ -74,12 +76,14 @@ impl UpdateApp {
         let runtime = Runtime::new().unwrap();
 
         let (need_update_sender, need_update_receiver) = mpsc::channel();
+        let ctx_clone = ctx.clone();
         runtime.spawn(async move {
             let _ = need_update_sender.send(match need_update().await {
                 Ok(true) => UpdateStatus::NeedUpdate,
                 Ok(false) => UpdateStatus::UpToDate,
                 Err(e) => UpdateStatus::Error(e.to_string()),
             });
+            ctx_clone.request_repaint();
         });
 
         let update_progress_bar = Arc::new(GuiProgressBar::new(ctx));
@@ -95,13 +99,13 @@ impl UpdateApp {
             new_binary_receiver: None,
             update_progress_bar,
             update_status: UpdateStatus::Checking,
-            fetch_status: FetchStatus::NeedFetching,
+            download_status: DownloadStatus::NeedDownloading,
         }
     }
 
     fn render_close_button(&self, ui: &mut egui::Ui) {
         if ui
-            .button(LangMessage::Close.to_string(&self.lang))
+            .button(LangMessage::ProceedToLauncher.to_string(&self.lang))
             .clicked()
         {
             ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
@@ -111,17 +115,21 @@ impl UpdateApp {
     fn ui(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             if let Some(new_binary_receiver) = &self.new_binary_receiver {
-                match new_binary_receiver.try_recv() {
-                    Ok(new_binary) => {
-                        ui.label(LangMessage::Launching.to_string(&self.lang));
-                        if let Some(e) = replace_binary_and_launch(new_binary.as_slice()).err() {
-                            self.fetch_status = FetchStatus::Error(e.to_string());
-                        } else {
-                            // new binary is already launched
+                if let Ok(download_status) = new_binary_receiver.try_recv() {
+                    match download_status {
+                        DownloadStatus::Downloaded(new_binary) => {
+                            ui.label(LangMessage::Launching.to_string(&self.lang));
+                            if let Some(e) = replace_binary_and_launch(new_binary.as_slice()).err()
+                            {
+                                self.download_status = DownloadStatus::Error(e.to_string());
+                            } else {
+                                // new binary is already launched
+                            }
                         }
-                    }
-                    Err(e) => {
-                        self.fetch_status = FetchStatus::Error(e.to_string());
+                        DownloadStatus::Error(e) => {
+                            self.download_status = DownloadStatus::Error(e.to_string());
+                        }
+                        DownloadStatus::NeedDownloading => {}
                     }
                 }
             } else {
@@ -131,9 +139,19 @@ impl UpdateApp {
                             let (new_binary_sender, new_binary_receiver) = mpsc::channel();
                             self.new_binary_receiver = Some(new_binary_receiver);
                             let update_progress_bar = self.update_progress_bar.clone();
+                            let ctx = ctx.clone();
                             self.runtime.spawn(async move {
-                                let _ = new_binary_sender
-                                    .send(fetch_new_binary(update_progress_bar).await.unwrap());
+                                match download_new_binary(update_progress_bar).await {
+                                    Ok(new_binary) => {
+                                        let _ = new_binary_sender
+                                            .send(DownloadStatus::Downloaded(new_binary));
+                                    }
+                                    Err(e) => {
+                                        let _ = new_binary_sender
+                                            .send(DownloadStatus::Error(e.to_string()));
+                                    }
+                                }
+                                ctx.request_repaint();
                             });
                         }
                         UpdateStatus::UpToDate => {
@@ -150,17 +168,18 @@ impl UpdateApp {
                 UpdateStatus::Checking => {
                     ui.label(LangMessage::CheckingForUpdates.to_string(&self.lang));
                 }
-                UpdateStatus::NeedUpdate => match &self.fetch_status {
-                    FetchStatus::NeedFetching => {
+                UpdateStatus::NeedUpdate => match &self.download_status {
+                    DownloadStatus::NeedDownloading => {
                         self.update_progress_bar.render(ui, &self.lang);
                     }
-                    FetchStatus::Error(e) => {
+                    DownloadStatus::Error(e) => {
                         ui.label(
                             LangMessage::ErrorDownloadingUpdate(e.to_string())
                                 .to_string(&self.lang),
                         );
                         self.render_close_button(ui);
                     }
+                    DownloadStatus::Downloaded(_) => {}
                 },
                 UpdateStatus::UpToDate => {}
                 UpdateStatus::Error(e) => {
