@@ -39,7 +39,10 @@ jobs:
 
       - name: Build the launcher
         run: |
-          cargo build --release
+          if [ "${{ matrix.os }}" != "macos-latest" ]; then
+            cargo build --release
+          fi
+
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
             BINARY_PATH="target/release/potato_launcher.exe"
           else
@@ -75,16 +78,15 @@ jobs:
             sips -z 512 512   assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_512x512.png
             sips -z 1024 1024 assets/"$LAUNCHER_NAME".png --out icon.iconset/icon_512x512@2x.png
 
-            mkdir -p app/"$DISPLAY_LAUNCHER_NAME".app/Contents/MacOS
+            iconutil -c icns icon.iconset -o assets/icon.icns
 
-            mkdir -p app/"$DISPLAY_LAUNCHER_NAME".app/Contents/Resources
-            iconutil -c icns icon.iconset -o app/"$DISPLAY_LAUNCHER_NAME".app/Contents/Resources/icon.icns
+            cargo install cargo-bundle
+            cargo bundle --release
 
-            sed -e "s/\${DISPLAY_LAUNCHER_NAME}/$DISPLAY_LAUNCHER_NAME/g" \
-                -e "s/\${LAUNCHER_NAME}/$LAUNCHER_NAME/g" \
-                assets/Info.plist > app/"$DISPLAY_LAUNCHER_NAME".app/Contents/Info.plist
+            mkdir -p app
+            mv target/release/bundle/osx/"$DISPLAY_LAUNCHER_NAME".app app/
 
-            cp "$BINARY_PATH" app/"$DISPLAY_LAUNCHER_NAME".app/Contents/MacOS/"$LAUNCHER_NAME"
+            codesign --force --deep --sign - app/"$DISPLAY_LAUNCHER_NAME".app
 
             DMG_FILENAME="${DISPLAY_LAUNCHER_NAME}.dmg"
             hdiutil create "$DMG_FILENAME" -ov -volname "$DISPLAY_LAUNCHER_NAME" -fs HFS+ -srcfolder "app/"
