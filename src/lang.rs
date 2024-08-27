@@ -47,6 +47,7 @@ pub enum LangMessage {
     Launching,
     ErrorCheckingForUpdates(String),
     ErrorDownloadingUpdate(String),
+    ErrorReadOnly,
     ProceedToLauncher,
 }
 
@@ -227,6 +228,23 @@ impl LangMessage {
             LangMessage::ErrorDownloadingUpdate(e) => match lang {
                 Lang::English => format!("Error downloading update: {}", e),
                 Lang::Russian => format!("Ошибка загрузки обновления: {}", e),
+            },
+            LangMessage::ErrorReadOnly => match lang {
+                Lang::English => {
+                    if cfg!(target_os = "macos") {
+                        "Error: read-only mode. If running from a disk image, copy to Applications"
+                            .to_string()
+                    } else {
+                        "Error: read-only mode".to_string()
+                    }
+                }
+                Lang::Russian => {
+                    if cfg!(target_os = "macos") {
+                        "Ошибка: режим только для чтения. Если лаунчер запущен из образа диска, скопируйте в Applications".to_string()
+                    } else {
+                        "Ошибка: режим только для чтения".to_string()
+                    }
+                }
             },
             LangMessage::ProceedToLauncher => match lang {
                 Lang::English => "Proceed to launcher".to_string(),

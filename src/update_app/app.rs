@@ -27,6 +27,7 @@ enum DownloadStatus {
     NeedDownloading,
     Downloaded(Vec<u8>),
     Error(String),
+    ErrorReadOnly,
 }
 
 pub struct UpdateApp {
@@ -121,15 +122,25 @@ impl UpdateApp {
                             ui.label(LangMessage::Launching.to_string(&self.lang));
                             if let Some(e) = replace_binary_and_launch(new_binary.as_slice()).err()
                             {
-                                self.download_status = DownloadStatus::Error(e.to_string());
+                                self.download_status =
+                                    if e.kind() == std::io::ErrorKind::PermissionDenied || e.raw_os_error() == Some(18) {
+                                        DownloadStatus::ErrorReadOnly
+                                    } else {
+                                        DownloadStatus::Error(e.to_string())
+                                    };
                             } else {
-                                // new binary is already launched
+                                panic!("Launcher should have been replaced and launched");
                             }
                         }
                         DownloadStatus::Error(e) => {
                             self.download_status = DownloadStatus::Error(e.to_string());
                         }
-                        DownloadStatus::NeedDownloading => {}
+                        DownloadStatus::NeedDownloading => {
+                            panic!("Should not receive NeedDownloading");
+                        }
+                        DownloadStatus::ErrorReadOnly => {
+                            self.download_status = DownloadStatus::ErrorReadOnly;
+                        }
                     }
                 }
             } else {
@@ -146,10 +157,18 @@ impl UpdateApp {
                                         let _ = new_binary_sender
                                             .send(DownloadStatus::Downloaded(new_binary));
                                     }
-                                    Err(e) => {
-                                        let _ = new_binary_sender
-                                            .send(DownloadStatus::Error(e.to_string()));
-                                    }
+                                    Err(e) => match e.downcast_ref::<std::io::Error>() {
+                                        Some(e)
+                                            if e.kind() == std::io::ErrorKind::PermissionDenied || e.raw_os_error() == Some(18) =>
+                                        {
+                                            let _ = new_binary_sender
+                                                .send(DownloadStatus::ErrorReadOnly);
+                                        }
+                                        _ => {
+                                            let _ = new_binary_sender
+                                                .send(DownloadStatus::Error(e.to_string()));
+                                        }
+                                    },
                                 }
                                 ctx.request_repaint();
                             });
@@ -158,7 +177,9 @@ impl UpdateApp {
                             ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                         }
                         UpdateStatus::Error(_) => {}
-                        UpdateStatus::Checking => {}
+                        UpdateStatus::Checking => {
+                            panic!("Should not receive Checking");
+                        }
                     }
                     self.update_status = update_status;
                 }
@@ -180,6 +201,10 @@ impl UpdateApp {
                         self.render_close_button(ui);
                     }
                     DownloadStatus::Downloaded(_) => {}
+                    DownloadStatus::ErrorReadOnly => {
+                        ui.label(LangMessage::ErrorReadOnly.to_string(&self.lang));
+                        self.render_close_button(ui);
+                    }
                 },
                 UpdateStatus::UpToDate => {}
                 UpdateStatus::Error(e) => {
