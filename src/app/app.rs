@@ -9,6 +9,7 @@ use super::java_state::JavaState;
 use super::language_selector::LanguageSelector;
 use super::launcher::Launcher;
 use super::modpack_sync_state::ModpackSyncState;
+use crate::config::build_config;
 use crate::config::runtime_config;
 
 pub struct LauncherApp {
@@ -28,7 +29,7 @@ pub fn run_gui(config: runtime_config::Config) {
     };
 
     run_native(
-        "Launcher",
+        &build_config::get_display_launcher_name(),
         native_options,
         Box::new(|cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);

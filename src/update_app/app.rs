@@ -15,6 +15,7 @@ use crate::launcher::update::need_update;
 use crate::launcher::update::replace_binary_and_launch;
 use crate::progress::ProgressBar;
 use crate::progress::Unit;
+use crate::utils;
 
 enum UpdateStatus {
     Checking,
@@ -59,7 +60,7 @@ pub fn run_gui(config: &runtime_config::Config) {
     let lang = config.lang.clone();
 
     run_native(
-        "Launcher",
+        &format!("{} Updater", build_config::get_display_launcher_name()),
         native_options,
         Box::new(|cc| Ok(Box::new(UpdateApp::new(lang, &cc.egui_ctx)))),
     )
@@ -122,12 +123,11 @@ impl UpdateApp {
                             ui.label(LangMessage::Launching.to_string(&self.lang));
                             if let Some(e) = replace_binary_and_launch(new_binary.as_slice()).err()
                             {
-                                self.download_status =
-                                    if e.kind() == std::io::ErrorKind::PermissionDenied || e.raw_os_error() == Some(18) {
-                                        DownloadStatus::ErrorReadOnly
-                                    } else {
-                                        DownloadStatus::Error(e.to_string())
-                                    };
+                                self.download_status = if utils::is_read_only_error(&e) {
+                                    DownloadStatus::ErrorReadOnly
+                                } else {
+                                    DownloadStatus::Error(e.to_string())
+                                };
                             } else {
                                 panic!("Launcher should have been replaced and launched");
                             }
@@ -152,24 +152,16 @@ impl UpdateApp {
                             let update_progress_bar = self.update_progress_bar.clone();
                             let ctx = ctx.clone();
                             self.runtime.spawn(async move {
-                                match download_new_binary(update_progress_bar).await {
+                                let _ = new_binary_sender.send(match download_new_binary(update_progress_bar).await {
                                     Ok(new_binary) => {
-                                        let _ = new_binary_sender
-                                            .send(DownloadStatus::Downloaded(new_binary));
+                                        DownloadStatus::Downloaded(new_binary)
                                     }
-                                    Err(e) => match e.downcast_ref::<std::io::Error>() {
-                                        Some(e)
-                                            if e.kind() == std::io::ErrorKind::PermissionDenied || e.raw_os_error() == Some(18) =>
-                                        {
-                                            let _ = new_binary_sender
-                                                .send(DownloadStatus::ErrorReadOnly);
-                                        }
-                                        _ => {
-                                            let _ = new_binary_sender
-                                                .send(DownloadStatus::Error(e.to_string()));
-                                        }
+                                    Err(e) => if utils::is_read_only_error(&e) {
+                                        DownloadStatus::ErrorReadOnly
+                                    } else {
+                                        DownloadStatus::Error(e.to_string())
                                     },
-                                }
+                                });
                                 ctx.request_repaint();
                             });
                         }

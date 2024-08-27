@@ -3,7 +3,6 @@ use reqwest::Client;
 use std::env;
 use std::path::Path;
 use std::process::Command;
-use std::process::Stdio;
 use std::sync::Arc;
 
 use crate::config::build_config;
@@ -102,14 +101,13 @@ fn replace_binary(current_path: &Path, new_binary: &[u8]) -> std::io::Result<()>
     Ok(())
 }
 
-pub fn replace_binary_and_launch(new_binary: &[u8]) -> std::io::Result<()> {
+pub fn replace_binary_and_launch(new_binary: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     let current_exe = env::current_exe()?;
     replace_binary(&current_exe, &new_binary)?;
     let args: Vec<String> = env::args().collect();
+
     Command::new(&current_exe)
         .args(&args[1..])
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
         .spawn()?;
     std::process::exit(0);
 }

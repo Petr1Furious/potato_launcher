@@ -1,4 +1,5 @@
 use crate::config::build_config;
+use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 
@@ -17,4 +18,11 @@ pub fn get_temp_dir() -> PathBuf {
         fs::create_dir_all(&temp_dir).unwrap();
     }
     temp_dir
+}
+
+pub fn is_read_only_error(e: &Box<dyn Error>) -> bool {
+    if let Some(e) = e.downcast_ref::<std::io::Error>() {
+        return e.kind() == std::io::ErrorKind::PermissionDenied || e.raw_os_error() == Some(18)
+    }
+    false
 }
