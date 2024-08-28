@@ -240,5 +240,14 @@ pub async fn launch(
     // "Assertion failed: (count <= len && "snprintf() output has been truncated"), function LOAD_ERROR, file dispatch.c, line 74."
     std::env::remove_var("DYLD_FALLBACK_LIBRARY_PATH");
 
+    #[cfg(target_os = "windows")]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.stdin(std::process::Stdio::null());
+        cmd.stdout(std::process::Stdio::null());
+        cmd.stderr(std::process::Stdio::null());
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
     Ok(cmd.spawn()?)
 }
