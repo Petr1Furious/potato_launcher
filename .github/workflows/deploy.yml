@@ -42,10 +42,10 @@ jobs:
           mkdir -p launcher
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
             cargo build --release
-            mv "target/release/${LAUNCHER_NAME}.exe" "launcher/${LAUNCHER_NAME}.exe"
+            mv "target/release/potato_launcher.exe" "launcher/${LAUNCHER_NAME}.exe"
           elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
             cargo build --release
-            mv "target/release/${LAUNCHER_NAME}" "launcher/${LAUNCHER_NAME}"
+            mv "target/release/potato_launcher" "launcher/${LAUNCHER_NAME}"
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
             mkdir -p icon.iconset
             sips -z 16 16     "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_16x16.png
@@ -66,15 +66,15 @@ jobs:
             cargo bundle --release
 
             mkdir -p app
-            mv target/release/bundle/osx/"$DISPLAY_LAUNCHER_NAME".app app/
+            mv "target/release/bundle/osx/Potato Launcher.app" "app/$DISPLAY_LAUNCHER_NAME.app"
 
-            codesign --force --deep --sign - app/"$DISPLAY_LAUNCHER_NAME".app
+            codesign --force --deep --sign - "app/$DISPLAY_LAUNCHER_NAME.app"
 
             DMG_FILENAME="${DISPLAY_LAUNCHER_NAME}.dmg"
             hdiutil create "$DMG_FILENAME" -ov -volname "$DISPLAY_LAUNCHER_NAME" -fs HFS+ -srcfolder "app/"
             mv "$DMG_FILENAME" launcher/
 
-            tar -czvf launcher/"$LAUNCHER_NAME".tar.gz app/"$DISPLAY_LAUNCHER_NAME".app
+            tar -czvf "launcher/$LAUNCHER_NAME_macos.tar.gz" "app/$DISPLAY_LAUNCHER_NAME.app"
           fi
 
           echo "$VERSION" > launcher/version.txt

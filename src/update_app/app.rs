@@ -10,9 +10,9 @@ use crate::config::build_config;
 use crate::config::runtime_config;
 use crate::lang::Lang;
 use crate::lang::LangMessage;
-use crate::launcher::update::download_new_binary;
+use crate::launcher::update::download_new_launcher;
 use crate::launcher::update::need_update;
-use crate::launcher::update::replace_binary_and_launch;
+use crate::launcher::update::replace_launcher_and_start;
 use crate::progress::ProgressBar;
 use crate::progress::Unit;
 use crate::utils;
@@ -121,7 +121,7 @@ impl UpdateApp {
                     match download_status {
                         DownloadStatus::Downloaded(new_binary) => {
                             ui.label(LangMessage::Launching.to_string(&self.lang));
-                            if let Some(e) = replace_binary_and_launch(new_binary.as_slice()).err()
+                            if let Some(e) = replace_launcher_and_start(new_binary.as_slice()).err()
                             {
                                 self.download_status = if utils::is_read_only_error(&e) {
                                     DownloadStatus::ErrorReadOnly
@@ -152,7 +152,7 @@ impl UpdateApp {
                             let update_progress_bar = self.update_progress_bar.clone();
                             let ctx = ctx.clone();
                             self.runtime.spawn(async move {
-                                let _ = new_binary_sender.send(match download_new_binary(update_progress_bar).await {
+                                let _ = new_binary_sender.send(match download_new_launcher(update_progress_bar).await {
                                     Ok(new_binary) => {
                                         DownloadStatus::Downloaded(new_binary)
                                     }
