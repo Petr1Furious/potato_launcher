@@ -8,6 +8,8 @@ import inquirer.errors
 from rich import print
 import httpx
 
+from build_cfg import SERVER_BASE
+
 from src import tui
 from src.auth import AuthProvider
 from src.auth.base import UnauthorizedException
@@ -82,6 +84,8 @@ async def main_menu(indexes: list[ModpackIndex], config: Config, online: bool):
         clear()
         online_msg = '[green](онлайн)[/green]' if online else '[red](офлайн)[/red]'
         print(f'Вы вошли как [green]{config.user_info.username}[/green] ' + online_msg)
+        
+        print(f'[red]Эта версия лаунчера устарела. Скачайте новый лаунчер по ссылке[/red] [bright_cyan]{SERVER_BASE}launcher/[/bright_cyan]')
 
         select_modpack_entry = (
             [(f'Изменить сборку (выбрана {config.modpack})', 'change_modpack')]

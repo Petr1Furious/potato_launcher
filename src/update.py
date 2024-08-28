@@ -50,6 +50,7 @@ async def download_update(file_path: Path):
 
 
 async def update_if_required():
+    return
     try:
         if len(sys.argv) == 3 and sys.argv[1] == 'updated':
             Path(sys.argv[2]).unlink()
