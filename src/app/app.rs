@@ -11,6 +11,7 @@ use super::launcher::Launcher;
 use super::modpack_sync_state::ModpackSyncState;
 use crate::config::build_config;
 use crate::config::runtime_config;
+use crate::lang::LangMessage;
 
 pub struct LauncherApp {
     runtime: Runtime,
@@ -25,6 +26,7 @@ pub struct LauncherApp {
 
 pub fn run_gui(config: runtime_config::Config) {
     let native_options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_inner_size((300.0, 300.0)),
         ..Default::default()
     };
 
@@ -66,8 +68,12 @@ impl LauncherApp {
             self.auth_state.update(&self.runtime, &mut self.config);
             let update_result = self.index_state.update(&self.runtime, &self.config, ctx);
 
+            ui.heading(LangMessage::Authorization.to_string(&self.config.lang));
+
             let username = self.config.user_info.as_ref().map(|x| x.username.as_str());
             self.auth_state.render_ui(ui, &self.config.lang, username);
+
+            ui.heading(LangMessage::Modpacks.to_string(&self.config.lang));
 
             let render_result = self.index_state.render_ui(ui, &mut self.config);
             let selected_modpack = self.index_state.get_selected_modpack(&self.config).cloned();
@@ -94,10 +100,11 @@ impl LauncherApp {
                     need_modpack_check,
                 );
 
-                self.java_state
-                    .render_ui(ui, &mut self.config, &selected_modpack);
                 self.modpack_sync_state
                     .render_ui(ui, &mut self.config, index_online);
+
+                self.java_state
+                    .render_ui(ui, &mut self.config, &selected_modpack);
 
                 if self.auth_state.ready_for_launch(&self.config)
                     && self.java_state.ready_for_launch()
@@ -113,6 +120,8 @@ impl LauncherApp {
                     );
                 }
             }
+
+            ui.add_space(10.0);
         });
     }
 }

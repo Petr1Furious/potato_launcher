@@ -124,36 +124,39 @@ impl IndexState {
             }
         });
 
-        if self.status != FetchStatus::FetchedRemote && self.fetch_task.is_none() {
-            if ui
-                .button(LangMessage::FetchIndexes.to_string(&config.lang))
-                .clicked()
-            {
-                self.status = FetchStatus::NotFetched;
-            }
-        }
-
         let selected_modpack_name = config.modpack_name.clone();
         let mut just_selected_modpack: Option<&ModpackIndex> = None;
-        egui::ComboBox::from_id_source("modpacks")
-            .selected_text(
-                selected_modpack_name
-                    .unwrap_or_else(|| LangMessage::SelectModpack.to_string(&config.lang)),
-            )
-            .show_ui(ui, |ui| match self.indexes.as_ref() {
-                Some(r) => {
-                    for index in r {
-                        ui.selectable_value(
-                            &mut just_selected_modpack,
-                            Some(index),
-                            index.modpack_name.clone(),
-                        );
+
+        ui.horizontal(|ui| {
+            egui::ComboBox::from_id_source("modpacks")
+                .selected_text(
+                    selected_modpack_name
+                        .unwrap_or_else(|| LangMessage::SelectModpack.to_string(&config.lang)),
+                )
+                .show_ui(ui, |ui| match self.indexes.as_ref() {
+                    Some(r) => {
+                        for index in r {
+                            ui.selectable_value(
+                                &mut just_selected_modpack,
+                                Some(index),
+                                index.modpack_name.clone(),
+                            );
+                        }
                     }
+                    None => {
+                        ui.label(LangMessage::NoIndexes.to_string(&config.lang));
+                    }
+                });
+
+            if self.status != FetchStatus::FetchedRemote && self.fetch_task.is_none() {
+                if ui
+                    .button(LangMessage::FetchIndexes.to_string(&config.lang))
+                    .clicked()
+                {
+                    self.status = FetchStatus::NotFetched;
                 }
-                None => {
-                    ui.label(LangMessage::NoIndexes.to_string(&config.lang));
-                }
-            });
+            }
+        });
 
         let just_selected_modpack = just_selected_modpack.map(|x| x.clone());
         let just_selected_modpack_name = just_selected_modpack

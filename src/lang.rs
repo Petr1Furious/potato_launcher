@@ -49,6 +49,8 @@ pub enum LangMessage {
     ErrorDownloadingUpdate(String),
     ErrorReadOnly,
     ProceedToLauncher,
+    Authorization,
+    Modpacks,
 }
 
 impl LangMessage {
@@ -96,8 +98,8 @@ impl LangMessage {
                 Lang::Russian => "Получение списка модпаков...".to_string(),
             },
             LangMessage::FetchedRemoteIndexes => match lang {
-                Lang::English => "Fetched remote modpack list".to_string(),
-                Lang::Russian => "Получен список модпаков с сервера".to_string(),
+                Lang::English => "Modpack list fetched".to_string(),
+                Lang::Russian => "Список модпаков получен".to_string(),
             },
             LangMessage::NoConnectionToIndexServer => match lang {
                 Lang::English => "No connection to the modpack server".to_string(),
@@ -249,6 +251,14 @@ impl LangMessage {
             LangMessage::ProceedToLauncher => match lang {
                 Lang::English => "Proceed to launcher".to_string(),
                 Lang::Russian => "Перейти к лаунчеру".to_string(),
+            },
+            LangMessage::Authorization => match lang {
+                Lang::English => "Authorization".to_string(),
+                Lang::Russian => "Авторизация".to_string(),
+            },
+            LangMessage::Modpacks => match lang {
+                Lang::English => "Modpacks".to_string(),
+                Lang::Russian => "Модпаки".to_string(),
             },
         }
     }

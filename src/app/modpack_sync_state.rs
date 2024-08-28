@@ -157,6 +157,17 @@ impl ModpackSyncState {
         config: &mut runtime_config::Config,
         index_online: bool,
     ) {
+        ui.label(match &self.status {
+            ModpackSyncStatus::NotSynced => LangMessage::ModpackNotSynced.to_string(&config.lang),
+            ModpackSyncStatus::NeedSync { ignore_version: _ } => {
+                LangMessage::SyncingModpack.to_string(&config.lang)
+            }
+            ModpackSyncStatus::Synced => LangMessage::ModpackSynced.to_string(&config.lang),
+            ModpackSyncStatus::SyncError(e) => {
+                LangMessage::ModpackSyncError(e.clone()).to_string(&config.lang)
+            }
+        });
+
         if !index_online {
             return;
         }
@@ -168,17 +179,6 @@ impl ModpackSyncState {
                 ignore_version: true,
             };
         }
-
-        ui.label(match &self.status {
-            ModpackSyncStatus::NotSynced => LangMessage::ModpackNotSynced.to_string(&config.lang),
-            ModpackSyncStatus::NeedSync { ignore_version: _ } => {
-                LangMessage::SyncingModpack.to_string(&config.lang)
-            }
-            ModpackSyncStatus::Synced => LangMessage::ModpackSynced.to_string(&config.lang),
-            ModpackSyncStatus::SyncError(e) => {
-                LangMessage::ModpackSyncError(e.clone()).to_string(&config.lang)
-            }
-        });
 
         if self.modpack_sync_task.is_some() {
             self.modpack_sync_progress_bar.render(ui, &config.lang);

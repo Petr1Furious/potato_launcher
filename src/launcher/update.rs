@@ -72,6 +72,7 @@ pub async fn download_new_launcher(
     Ok(bytes)
 }
 
+#[cfg(target_os = "macos")]
 fn unarchive_tar_gz(archive_data: &[u8], dest_dir: &Path) -> std::io::Result<()> {
     if dest_dir.exists() {
         fs::remove_dir_all(dest_dir)?;
@@ -159,10 +160,7 @@ pub fn replace_launcher_and_start(new_archive: &[u8]) -> Result<(), Box<dyn std:
     const UPDATE_APP_NAME: &str = "update.app";
 
     fs::rename(&bundle_dir, &backup_dir)?;
-    fs::rename(
-        &temp_dir.join(UPDATE_APP_NAME),
-        &bundle_dir,
-    )?;
+    fs::rename(&temp_dir.join(UPDATE_APP_NAME), &bundle_dir)?;
     fs::remove_dir_all(&backup_dir)?;
 
     let args: Vec<String> = env::args().collect();

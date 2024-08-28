@@ -206,32 +206,30 @@ impl JavaState {
             show_download_button = true;
         }
 
-        ui.horizontal(|ui| {
-            if show_download_button {
-                if self
-                    .get_download_button_text(selected_index, config)
-                    .ui(ui)
-                    .clicked()
-                {
-                    self.status = JavaDownloadStatus::NeedDownload;
-                }
-            }
-            if ui
-                .button(LangMessage::JavaSettings.to_string(&config.lang))
+        if show_download_button {
+            if self
+                .get_download_button_text(selected_index, config)
+                .ui(ui)
                 .clicked()
             {
-                self.settings_opened = true;
-
-                self.picked_java_path = Some(
-                    config
-                        .java_paths
-                        .get(&selected_index.modpack_name)
-                        .unwrap()
-                        .clone(),
-                );
-                self.selected_xmx = Some(config.xmx.clone());
+                self.status = JavaDownloadStatus::NeedDownload;
             }
-        });
+        }
+        if ui
+            .button(LangMessage::JavaSettings.to_string(&config.lang))
+            .clicked()
+        {
+            self.settings_opened = true;
+
+            self.picked_java_path = Some(
+                config
+                    .java_paths
+                    .get(&selected_index.modpack_name)
+                    .unwrap()
+                    .clone(),
+            );
+            self.selected_xmx = Some(config.xmx.clone());
+        }
 
         self.render_settings_window(ui, config, selected_index);
     }
