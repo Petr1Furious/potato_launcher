@@ -22,7 +22,7 @@ lazy_static::lazy_static! {
 }
 #[cfg(target_os = "linux")]
 lazy_static::lazy_static! {
-    static ref LAUNCHER_FILE_NAME: String = format!("{}_linux", build_config::get_launcher_name());
+    static ref LAUNCHER_FILE_NAME: String = format!("{}", build_config::get_launcher_name());
 }
 #[cfg(target_os = "macos")]
 lazy_static::lazy_static! {
