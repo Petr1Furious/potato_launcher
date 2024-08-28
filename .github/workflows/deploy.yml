@@ -74,7 +74,8 @@ jobs:
             hdiutil create "$DMG_FILENAME" -ov -volname "$DISPLAY_LAUNCHER_NAME" -fs HFS+ -srcfolder "app/"
             mv "$DMG_FILENAME" launcher/
 
-            tar -czvf "launcher/${LAUNCHER_NAME}_macos.tar.gz" "app/$DISPLAY_LAUNCHER_NAME.app"
+            mv "app/$DISPLAY_LAUNCHER_NAME.app" "app/update.app"
+            tar -czvf "launcher/${LAUNCHER_NAME}_macos.tar.gz" -C app "update.app"
           fi
 
           echo "$VERSION" > launcher/version.txt

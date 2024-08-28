@@ -22,7 +22,7 @@ pub fn get_temp_dir() -> PathBuf {
 
 pub fn is_read_only_error(e: &Box<dyn Error>) -> bool {
     if let Some(e) = e.downcast_ref::<std::io::Error>() {
-        return e.kind() == std::io::ErrorKind::PermissionDenied || e.raw_os_error() == Some(18)
+        return e.kind() == std::io::ErrorKind::PermissionDenied || e.raw_os_error() == Some(18);
     }
     false
 }

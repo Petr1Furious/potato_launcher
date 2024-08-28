@@ -152,16 +152,18 @@ impl UpdateApp {
                             let update_progress_bar = self.update_progress_bar.clone();
                             let ctx = ctx.clone();
                             self.runtime.spawn(async move {
-                                let _ = new_binary_sender.send(match download_new_launcher(update_progress_bar).await {
-                                    Ok(new_binary) => {
-                                        DownloadStatus::Downloaded(new_binary)
-                                    }
-                                    Err(e) => if utils::is_read_only_error(&e) {
-                                        DownloadStatus::ErrorReadOnly
-                                    } else {
-                                        DownloadStatus::Error(e.to_string())
+                                let _ = new_binary_sender.send(
+                                    match download_new_launcher(update_progress_bar).await {
+                                        Ok(new_binary) => DownloadStatus::Downloaded(new_binary),
+                                        Err(e) => {
+                                            if utils::is_read_only_error(&e) {
+                                                DownloadStatus::ErrorReadOnly
+                                            } else {
+                                                DownloadStatus::Error(e.to_string())
+                                            }
+                                        }
                                     },
-                                });
+                                );
                                 ctx.request_repaint();
                             });
                         }

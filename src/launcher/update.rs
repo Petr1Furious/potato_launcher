@@ -1,11 +1,11 @@
 use flate2::read::GzDecoder;
 use futures::StreamExt as _;
 use reqwest::Client;
-use tar::Archive;
-use std::env;
 use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
+use std::{env, fs};
+use tar::Archive;
 
 use crate::config::build_config;
 use crate::lang::LangMessage;
@@ -73,6 +73,12 @@ pub async fn download_new_launcher(
 }
 
 fn unarchive_tar_gz(archive_data: &[u8], dest_dir: &Path) -> std::io::Result<()> {
+    if dest_dir.exists() {
+        fs::remove_dir_all(dest_dir)?;
+    }
+
+    fs::create_dir_all(dest_dir)?;
+
     let tar = GzDecoder::new(archive_data);
     let mut archive = Archive::new(tar);
     archive.unpack(dest_dir)?;
@@ -85,16 +91,14 @@ fn replace_binary(current_exe: &Path, new_binary: &[u8]) -> std::io::Result<()> 
 
     let temp_path =
         utils::get_temp_dir().join(format!("{}-new", build_config::get_launcher_name()));
-    std::fs::write(&temp_path, new_binary)?;
+    fs::write(&temp_path, new_binary)?;
     chmod_x(&temp_path)?;
-    std::fs::rename(temp_path, current_exe)?;
+    fs::rename(temp_path, current_exe)?;
     Ok(())
 }
 
 #[cfg(target_os = "windows")]
 fn replace_binary(current_path: &Path, new_binary: &[u8]) -> std::io::Result<()> {
-    use std::fs;
-
     let temp_path =
         utils::get_temp_dir().join(format!("{}-new.exe", build_config::get_launcher_name()));
     fs::write(&temp_path, new_binary)?;
@@ -116,38 +120,52 @@ pub fn replace_launcher_and_start(new_binary: &[u8]) -> Result<(), Box<dyn std::
     replace_binary(&current_exe, &new_binary)?;
     let args: Vec<String> = env::args().collect();
 
-    Command::new(&current_exe)
-        .args(&args[1..])
-        .spawn()?;
+    Command::new(&current_exe).args(&args[1..]).spawn()?;
     std::process::exit(0);
 }
 
 #[cfg(target_os = "macos")]
 pub fn replace_launcher_and_start(new_archive: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
-    use std::fs;
-
     let current_exe = env::current_exe()?;
-    let current_dir = current_exe.parent().expect("Failed to get current executable directory");
-    let contents_dir = current_dir.parent().expect("Failed to get Contents directory");
-    let bundle_dir = contents_dir.parent().expect("Failed to get bundle directory");
-    if !bundle_dir.ends_with(format!("{}.app", build_config::get_display_launcher_name())) {
+    let current_dir = current_exe
+        .parent()
+        .expect("Failed to get current executable directory");
+    let contents_dir = current_dir
+        .parent()
+        .expect("Failed to get Contents directory");
+    let bundle_dir = contents_dir
+        .parent()
+        .expect("Failed to get bundle directory");
+
+    let app_name = bundle_dir.file_name().unwrap().to_str().unwrap();
+
+    if !app_name.ends_with(".app") {
         return Err(format!("Invalid bundle directory: {:?}", bundle_dir).into());
     }
 
     let temp_dir = utils::get_temp_dir().join("launcher_update");
     let backup_dir = utils::get_temp_dir().join("launcher_backup");
 
-    std::fs::create_dir_all(&temp_dir)?;
-    std::fs::create_dir_all(&backup_dir)?;
+    fs::create_dir_all(&temp_dir)?;
+    fs::create_dir_all(&backup_dir)?;
 
     unarchive_tar_gz(new_archive, &temp_dir)?;
+
+    if backup_dir.exists() {
+        fs::remove_dir_all(&backup_dir)?;
+    }
+
+    // update.app is the name of the app bundle in the tar.gz created in ci
+    const UPDATE_APP_NAME: &str = "update.app";
+
     fs::rename(&bundle_dir, &backup_dir)?;
-    fs::rename(&temp_dir, &bundle_dir)?;
+    fs::rename(
+        &temp_dir.join(UPDATE_APP_NAME),
+        &bundle_dir,
+    )?;
     fs::remove_dir_all(&backup_dir)?;
 
     let args: Vec<String> = env::args().collect();
-    Command::new(&current_exe)
-        .args(&args[1..])
-        .spawn()?;
+    Command::new(&current_exe).args(&args[1..]).spawn()?;
     std::process::exit(0);
 }
