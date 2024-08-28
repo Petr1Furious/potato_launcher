@@ -1,7 +1,7 @@
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
 use std::path::Path;
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
 pub fn chmod_x<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
     use std::fs;
     use std::os::unix::fs::PermissionsExt;

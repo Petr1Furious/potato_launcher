@@ -10,6 +10,7 @@ fn main() {
         "ELYBY_CLIENT_ID",
         "ELYBY_CLIENT_SECRET",
         "VERSION",
+        "DISPLAY_LAUNCHER_NAME",
     ];
 
     let out_dir = env::var("OUT_DIR").unwrap();

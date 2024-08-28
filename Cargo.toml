@@ -35,3 +35,11 @@ winreg = "0.52.0"
 
 [build-dependencies]
 winres = "0.1.12"
+
+[package.metadata.bundle]
+name = "Potato Launcher"
+identifier = "com.petr1furious.potato_launcher"
+icon = ["assets/icon.icns"]
+
+[package.metadata.bundle.macos]
+minimum_system_version = "10.11"

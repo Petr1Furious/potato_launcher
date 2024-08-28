@@ -1,9 +1,10 @@
+use flate2::read::GzDecoder;
 use futures::StreamExt as _;
 use reqwest::Client;
+use tar::Archive;
 use std::env;
 use std::path::Path;
 use std::process::Command;
-use std::process::Stdio;
 use std::sync::Arc;
 
 use crate::config::build_config;
@@ -17,19 +18,19 @@ lazy_static::lazy_static! {
 
 #[cfg(target_os = "windows")]
 lazy_static::lazy_static! {
-    static ref LAUNCHER_BINARY_NAME: String = format!("{}.exe", build_config::get_launcher_name());
+    static ref LAUNCHER_FILE_NAME: String = format!("{}.exe", build_config::get_launcher_name());
 }
 #[cfg(target_os = "linux")]
 lazy_static::lazy_static! {
-    static ref LAUNCHER_BINARY_NAME: String = format!("{}_linux", build_config::get_launcher_name());
+    static ref LAUNCHER_FILE_NAME: String = format!("{}", build_config::get_launcher_name());
 }
 #[cfg(target_os = "macos")]
 lazy_static::lazy_static! {
-    static ref LAUNCHER_BINARY_NAME: String = format!("{}_macos", build_config::get_launcher_name());
+    static ref LAUNCHER_FILE_NAME: String = format!("{}_macos.tar.gz", build_config::get_launcher_name());
 }
 
 lazy_static::lazy_static! {
-    static ref UPDATE_URL: String = format!("{}/launcher/{}", build_config::get_server_base(), *LAUNCHER_BINARY_NAME);
+    static ref UPDATE_URL: String = format!("{}/launcher/{}", build_config::get_server_base(), *LAUNCHER_FILE_NAME);
 }
 
 async fn fetch_new_version() -> Result<String, Box<dyn std::error::Error>> {
@@ -45,7 +46,7 @@ pub async fn need_update() -> Result<bool, Box<dyn std::error::Error>> {
     Ok(new_version != current_version)
 }
 
-pub async fn download_new_binary(
+pub async fn download_new_launcher(
     progress_bar: Arc<dyn ProgressBar + Send + Sync>,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let client = Client::new();
@@ -71,7 +72,14 @@ pub async fn download_new_binary(
     Ok(bytes)
 }
 
-#[cfg(not(target_os = "windows"))]
+fn unarchive_tar_gz(archive_data: &[u8], dest_dir: &Path) -> std::io::Result<()> {
+    let tar = GzDecoder::new(archive_data);
+    let mut archive = Archive::new(tar);
+    archive.unpack(dest_dir)?;
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
 fn replace_binary(current_exe: &Path, new_binary: &[u8]) -> std::io::Result<()> {
     use super::compat::chmod_x;
 
@@ -102,14 +110,44 @@ fn replace_binary(current_path: &Path, new_binary: &[u8]) -> std::io::Result<()>
     Ok(())
 }
 
-pub fn replace_binary_and_launch(new_binary: &[u8]) -> std::io::Result<()> {
+#[cfg(not(target_os = "macos"))]
+pub fn replace_launcher_and_start(new_binary: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     let current_exe = env::current_exe()?;
     replace_binary(&current_exe, &new_binary)?;
     let args: Vec<String> = env::args().collect();
+
     Command::new(&current_exe)
         .args(&args[1..])
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
+        .spawn()?;
+    std::process::exit(0);
+}
+
+#[cfg(target_os = "macos")]
+pub fn replace_launcher_and_start(new_archive: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+    use std::fs;
+
+    let current_exe = env::current_exe()?;
+    let current_dir = current_exe.parent().expect("Failed to get current executable directory");
+    let contents_dir = current_dir.parent().expect("Failed to get Contents directory");
+    let bundle_dir = contents_dir.parent().expect("Failed to get bundle directory");
+    if !bundle_dir.ends_with(format!("{}.app", build_config::get_display_launcher_name())) {
+        return Err(format!("Invalid bundle directory: {:?}", bundle_dir).into());
+    }
+
+    let temp_dir = utils::get_temp_dir().join("launcher_update");
+    let backup_dir = utils::get_temp_dir().join("launcher_backup");
+
+    std::fs::create_dir_all(&temp_dir)?;
+    std::fs::create_dir_all(&backup_dir)?;
+
+    unarchive_tar_gz(new_archive, &temp_dir)?;
+    fs::rename(&bundle_dir, &backup_dir)?;
+    fs::rename(&temp_dir, &bundle_dir)?;
+    fs::remove_dir_all(&backup_dir)?;
+
+    let args: Vec<String> = env::args().collect();
+    Command::new(&current_exe)
+        .args(&args[1..])
         .spawn()?;
     std::process::exit(0);
 }

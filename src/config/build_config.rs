@@ -42,3 +42,10 @@ pub fn get_version() -> Option<String> {
         None => None,
     }
 }
+
+pub fn get_display_launcher_name() -> String {
+    match DISPLAY_LAUNCHER_NAME {
+        Some(display_launcher_name) => display_launcher_name.to_string(),
+        None => LAUNCHER_NAME.to_string(),
+    }
+}
