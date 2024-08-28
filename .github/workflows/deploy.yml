@@ -42,10 +42,10 @@ jobs:
           mkdir -p launcher
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
             cargo build --release
-            mv "target/release/potato_launcher.exe" "launcher/${LAUNCHER_NAME}.exe"
+            mv "target/release/potato_launcher.exe" "launcher/${DISPLAY_LAUNCHER_NAME}.exe"
           elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
             cargo build --release
-            mv "target/release/potato_launcher" "launcher/${LAUNCHER_NAME}"
+            mv "target/release/potato_launcher" "launcher/${DISPLAY_LAUNCHER_NAME}"
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
             mkdir -p icon.iconset
             sips -z 16 16     "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_16x16.png
