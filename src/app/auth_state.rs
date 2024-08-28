@@ -180,27 +180,30 @@ impl AuthState {
         if self.auth_task.is_some() {
             let message = self.auth_message_provider.get_message();
             if let Some(message) = message {
-                egui::Window::new("Authorization").show(ui.ctx(), |ui| {
-                    let url = match message {
-                        LangMessage::AuthMessage { url } => Some(url),
-                        _ => None,
-                    }
-                    .unwrap();
-
-                    ui.hyperlink(&url);
-                    let code = QrCode::new(url).unwrap();
-                    let image = code.render::<Luma<u8>>().build();
-
-                    let mut png_bytes: Vec<u8> = Vec::new();
-                    let mut cursor = Cursor::new(&mut png_bytes);
-                    image::DynamicImage::ImageLuma8(image)
-                        .write_to(&mut cursor, image::ImageFormat::Png)
+                egui::Window::new(LangMessage::Authorization.to_string(lang)).show(
+                    ui.ctx(),
+                    |ui| {
+                        let url = match message {
+                            LangMessage::AuthMessage { url } => Some(url),
+                            _ => None,
+                        }
                         .unwrap();
 
-                    let uri = "bytes://auth_qr.png";
-                    ui.ctx().include_bytes(uri, png_bytes.clone());
-                    ui.add(egui::Image::from_bytes(uri.to_string(), png_bytes));
-                });
+                        ui.hyperlink(&url);
+                        let code = QrCode::new(url).unwrap();
+                        let image = code.render::<Luma<u8>>().build();
+
+                        let mut png_bytes: Vec<u8> = Vec::new();
+                        let mut cursor = Cursor::new(&mut png_bytes);
+                        image::DynamicImage::ImageLuma8(image)
+                            .write_to(&mut cursor, image::ImageFormat::Png)
+                            .unwrap();
+
+                        let uri = "bytes://auth_qr.png";
+                        ui.ctx().include_bytes(uri, png_bytes.clone());
+                        ui.add(egui::Image::from_bytes(uri.to_string(), png_bytes));
+                    },
+                );
             }
         }
 

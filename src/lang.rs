@@ -51,6 +51,8 @@ pub enum LangMessage {
     ProceedToLauncher,
     Authorization,
     Modpacks,
+    ForceOverwrite,
+    ForceOverwriteWarning,
 }
 
 impl LangMessage {
@@ -259,6 +261,14 @@ impl LangMessage {
             LangMessage::Modpacks => match lang {
                 Lang::English => "Modpacks".to_string(),
                 Lang::Russian => "Модпаки".to_string(),
+            },
+            LangMessage::ForceOverwrite => match lang {
+                Lang::English => "Overwrite optional files".to_string(),
+                Lang::Russian => "Перезаписать необязательные файлы".to_string(),
+            },
+            LangMessage::ForceOverwriteWarning => match lang {
+                Lang::English => "Warning: this may overwrite such files as configs, server list, etc.".to_string(),
+                Lang::Russian => "Внимание: это может перезаписать такие файлы как настройки, список серверов и т.д.".to_string(),
             },
         }
     }

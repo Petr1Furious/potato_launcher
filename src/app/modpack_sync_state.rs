@@ -13,7 +13,10 @@ use super::task::Task;
 #[derive(Clone, PartialEq)]
 enum ModpackSyncStatus {
     NotSynced,
-    NeedSync { ignore_version: bool },
+    NeedSync {
+        ignore_version: bool,
+        force_overwrite: bool,
+    },
     Synced,
     SyncError(String),
 }
@@ -69,6 +72,8 @@ pub struct ModpackSyncState {
     modpack_sync_task: Option<Task<ModpackSyncResult>>,
     modpack_sync_progress_bar: Arc<GuiProgressBar>,
     local_indexes: Vec<ModpackIndex>,
+    modpack_sync_window_open: bool,
+    force_overwrite_checked: bool,
 }
 
 impl ModpackSyncState {
@@ -80,6 +85,8 @@ impl ModpackSyncState {
             modpack_sync_task: None,
             modpack_sync_progress_bar,
             local_indexes: index::load_local_indexes(&runtime_config::get_index_path(config)),
+            modpack_sync_window_open: false,
+            force_overwrite_checked: false,
         };
     }
 
@@ -113,9 +120,13 @@ impl ModpackSyncState {
             }
         }
 
-        if let ModpackSyncStatus::NeedSync { ignore_version } = &self.status {
+        if let ModpackSyncStatus::NeedSync {
+            ignore_version,
+            force_overwrite,
+        } = self.status.clone()
+        {
             if self.modpack_sync_task.is_none() {
-                if !*ignore_version {
+                if !ignore_version {
                     if self.is_up_to_date(selected_index) {
                         self.status = ModpackSyncStatus::Synced;
                     }
@@ -131,7 +142,7 @@ impl ModpackSyncState {
                     self.modpack_sync_task = Some(sync_modpack(
                         runtime,
                         selected_index,
-                        false,
+                        force_overwrite,
                         &modpack_dir,
                         &assets_dir,
                         &index_path,
@@ -159,9 +170,10 @@ impl ModpackSyncState {
     ) {
         ui.label(match &self.status {
             ModpackSyncStatus::NotSynced => LangMessage::ModpackNotSynced.to_string(&config.lang),
-            ModpackSyncStatus::NeedSync { ignore_version: _ } => {
-                LangMessage::SyncingModpack.to_string(&config.lang)
-            }
+            ModpackSyncStatus::NeedSync {
+                ignore_version: _,
+                force_overwrite: _,
+            } => LangMessage::SyncingModpack.to_string(&config.lang),
             ModpackSyncStatus::Synced => LangMessage::ModpackSynced.to_string(&config.lang),
             ModpackSyncStatus::SyncError(e) => {
                 LangMessage::ModpackSyncError(e.clone()).to_string(&config.lang)
@@ -175,13 +187,36 @@ impl ModpackSyncState {
             .button(LangMessage::SyncModpack.to_string(&config.lang))
             .clicked()
         {
-            self.status = ModpackSyncStatus::NeedSync {
-                ignore_version: true,
-            };
+            self.modpack_sync_window_open = true;
         }
 
-        if self.modpack_sync_task.is_some() {
-            self.modpack_sync_progress_bar.render(ui, &config.lang);
+        if self.modpack_sync_window_open {
+            egui::Window::new(LangMessage::SyncModpack.to_string(&config.lang))
+            .open(&mut self.modpack_sync_window_open)
+            .show(
+                ui.ctx(),
+                |ui| {
+                    ui.checkbox(
+                        &mut self.force_overwrite_checked,
+                        LangMessage::ForceOverwrite.to_string(&config.lang),
+                    );
+                    ui.label(LangMessage::ForceOverwriteWarning.to_string(&config.lang));
+
+                    if ui
+                        .button(LangMessage::SyncModpack.to_string(&config.lang))
+                        .clicked()
+                    {
+                        self.status = ModpackSyncStatus::NeedSync {
+                            ignore_version: true,
+                            force_overwrite: self.force_overwrite_checked,
+                        };
+                    }
+
+                    if self.modpack_sync_task.is_some() {
+                        self.modpack_sync_progress_bar.render(ui, &config.lang);
+                    }
+                },
+            );
         }
     }
 
