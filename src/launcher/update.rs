@@ -1,11 +1,9 @@
-use flate2::read::GzDecoder;
 use futures::StreamExt as _;
 use reqwest::Client;
 use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
 use std::{env, fs};
-use tar::Archive;
 
 use crate::config::build_config;
 use crate::lang::LangMessage;
@@ -74,6 +72,9 @@ pub async fn download_new_launcher(
 
 #[cfg(target_os = "macos")]
 fn unarchive_tar_gz(archive_data: &[u8], dest_dir: &Path) -> std::io::Result<()> {
+    use flate2::read::GzDecoder;
+    use tar::Archive;
+
     if dest_dir.exists() {
         fs::remove_dir_all(dest_dir)?;
     }

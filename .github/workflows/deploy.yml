@@ -66,10 +66,17 @@ jobs:
             iconutil -c icns icon.iconset -o assets/icon.icns
 
             cargo install cargo-bundle
-            cargo bundle --release
 
+            cargo bundle --release --target aarch64-apple-darwin
             mkdir -p app
-            mv "target/release/bundle/osx/Potato Launcher.app" "app/$DISPLAY_LAUNCHER_NAME.app"
+            cp -r "target/aarch64-apple-darwin/release/bundle/osx/Potato Launcher.app" "app/$DISPLAY_LAUNCHER_NAME.app"
+
+            rustup target add x86_64-apple-darwin
+            cargo bundle --release --target x86_64-apple-darwin
+
+            lipo -create -output "app/$DISPLAY_LAUNCHER_NAME.app/Contents/MacOS/potato_launcher" \
+              "target/x86_64-apple-darwin/release/bundle/osx/Potato Launcher.app/Contents/MacOS/potato_launcher" \
+              "target/aarch64-apple-darwin/release/bundle/osx/Potato Launcher.app/Contents/MacOS/potato_launcher"
 
             codesign --force --deep --sign - "app/$DISPLAY_LAUNCHER_NAME.app"
 
