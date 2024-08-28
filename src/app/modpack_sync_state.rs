@@ -158,6 +158,7 @@ impl ModpackSyncState {
                 self.local_indexes =
                     index::load_local_indexes(&runtime_config::get_index_path(config));
                 self.modpack_sync_task = None;
+                self.modpack_sync_window_open = false;
             }
         }
     }
