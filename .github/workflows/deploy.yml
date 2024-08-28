@@ -46,9 +46,11 @@ jobs:
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
             cargo build --release
             mv "target/release/potato_launcher.exe" "launcher/${DISPLAY_LAUNCHER_NAME}.exe"
+            echo "$VERSION" > launcher/version_windows.txt
           elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
             cargo build --release
             mv "target/release/potato_launcher" "launcher/${DISPLAY_LAUNCHER_NAME}"
+            echo "$VERSION" > launcher/version_linux.txt
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
             mkdir -p icon.iconset
             sips -z 16 16     "assets/$LAUNCHER_NAME.png" --out icon.iconset/icon_16x16.png
@@ -86,9 +88,9 @@ jobs:
 
             mv "app/$DISPLAY_LAUNCHER_NAME.app" "app/update.app"
             tar -czvf "launcher/${LAUNCHER_NAME}_macos.tar.gz" -C app "update.app"
-          fi
 
-          echo "$VERSION" > launcher/version.txt
+            echo "$VERSION" > launcher/version_macos.txt
+          fi
 
       - name: Upload to server
         if: github.ref == 'refs/heads/rewrite-in-rust'

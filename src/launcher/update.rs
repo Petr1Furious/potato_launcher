@@ -10,8 +10,17 @@ use crate::lang::LangMessage;
 use crate::progress::ProgressBar;
 use crate::utils;
 
+#[cfg(target_os = "windows")]
 lazy_static::lazy_static! {
-    static ref VERSION_URL: String = format!("{}/launcher/version.txt", build_config::get_server_base());
+    static ref VERSION_URL: String = format!("{}/launcher/version_windows.txt", build_config::get_server_base());
+}
+#[cfg(target_os = "linux")]
+lazy_static::lazy_static! {
+    static ref VERSION_URL: String = format!("{}/launcher/version_linux.txt", build_config::get_server_base());
+}
+#[cfg(target_os = "macos")]
+lazy_static::lazy_static! {
+    static ref VERSION_URL: String = format!("{}/launcher/version_macos.txt", build_config::get_server_base());
 }
 
 #[cfg(target_os = "windows")]
