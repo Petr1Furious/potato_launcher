@@ -116,21 +116,27 @@ impl UpdateApp {
 
     fn ui(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            match &self.download_status {
+                DownloadStatus::Downloaded(new_binary) => {
+                    if let Some(e) = replace_launcher_and_start(new_binary).err()
+                    {
+                        self.download_status = if utils::is_read_only_error(&e) {
+                            DownloadStatus::ErrorReadOnly
+                        } else {
+                            DownloadStatus::Error(e.to_string())
+                        };
+                    } else {
+                        panic!("Launcher should have been replaced and launched");
+                    }
+                }
+                _ => {}
+            }
+
             if let Some(new_binary_receiver) = &self.new_binary_receiver {
                 if let Ok(download_status) = new_binary_receiver.try_recv() {
-                    match download_status {
-                        DownloadStatus::Downloaded(new_binary) => {
+                    match &download_status {
+                        DownloadStatus::Downloaded(_) => {
                             ui.label(LangMessage::Launching.to_string(&self.lang));
-                            if let Some(e) = replace_launcher_and_start(new_binary.as_slice()).err()
-                            {
-                                self.download_status = if utils::is_read_only_error(&e) {
-                                    DownloadStatus::ErrorReadOnly
-                                } else {
-                                    DownloadStatus::Error(e.to_string())
-                                };
-                            } else {
-                                panic!("Launcher should have been replaced and launched");
-                            }
                         }
                         DownloadStatus::Error(e) => {
                             self.download_status = DownloadStatus::Error(e.to_string());
@@ -142,6 +148,7 @@ impl UpdateApp {
                             self.download_status = DownloadStatus::ErrorReadOnly;
                         }
                     }
+                    self.download_status = download_status;
                 }
             } else {
                 if let Ok(update_status) = self.need_update_receiver.try_recv() {
