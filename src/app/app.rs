@@ -66,7 +66,9 @@ impl LauncherApp {
             self.language_selector.render_ui(ui, &mut self.config);
 
             self.auth_state.update(&self.runtime, &mut self.config);
-            let update_result = self.index_state.update(&self.runtime, &mut self.config, ctx);
+            let update_result = self
+                .index_state
+                .update(&self.runtime, &mut self.config, ctx);
 
             ui.heading(LangMessage::Authorization.to_string(&self.config.lang));
 
@@ -114,7 +116,7 @@ impl LauncherApp {
                     self.launcher.render_ui(
                         &self.runtime,
                         ui,
-                        &self.config,
+                        &mut self.config,
                         &selected_modpack,
                         self.auth_state.online(),
                     );

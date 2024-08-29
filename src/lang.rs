@@ -53,6 +53,9 @@ pub enum LangMessage {
     Modpacks,
     ForceOverwrite,
     ForceOverwriteWarning,
+    OpenLauncherDirectory,
+    KillMinecraft,
+    CloseLauncherAfterLaunch,
 }
 
 impl LangMessage {
@@ -269,6 +272,18 @@ impl LangMessage {
             LangMessage::ForceOverwriteWarning => match lang {
                 Lang::English => "Warning: this may overwrite such files as configs, server list, etc.".to_string(),
                 Lang::Russian => "Внимание: это может перезаписать такие файлы как настройки, список серверов и т.д.".to_string(),
+            },
+            LangMessage::OpenLauncherDirectory => match lang {
+                Lang::English => "Open launcher directory".to_string(),
+                Lang::Russian => "Открыть папку лаунчера".to_string(),
+            },
+            LangMessage::KillMinecraft => match lang {
+                Lang::English => "Kill Minecraft".to_string(),
+                Lang::Russian => "Закрыть Minecraft".to_string(),
+            },
+            LangMessage::CloseLauncherAfterLaunch => match lang {
+                Lang::English => "Close launcher after launch".to_string(),
+                Lang::Russian => "Закрыть лаунчер после запуска".to_string(),
             },
         }
     }

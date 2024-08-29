@@ -126,8 +126,7 @@ impl UpdateApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             match &self.download_status {
                 DownloadStatus::Downloaded(new_binary) => {
-                    if let Some(e) = replace_launcher_and_start(new_binary).err()
-                    {
+                    if let Some(e) = replace_launcher_and_start(new_binary).err() {
                         self.download_status = if utils::is_read_only_error(&e) {
                             DownloadStatus::ErrorReadOnly
                         } else {

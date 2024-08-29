@@ -8,6 +8,7 @@ use crate::lang::LangMessage;
 use crate::launcher::java;
 use crate::modpack::index::ModpackIndex;
 use crate::progress::{ProgressBar, Unit};
+use crate::utils;
 
 use super::progress_bar::GuiProgressBar;
 use super::task::Task;
@@ -221,10 +222,7 @@ impl JavaState {
         {
             self.settings_opened = true;
 
-            self.picked_java_path = config
-                .java_paths
-                .get(&selected_index.modpack_name)
-                .cloned();
+            self.picked_java_path = config.java_paths.get(&selected_index.modpack_name).cloned();
             self.selected_xmx = Some(config.xmx.clone());
         }
 
@@ -270,7 +268,14 @@ impl JavaState {
                 ui.label(LangMessage::JavaXMX.to_string(&config.lang));
                 ui.text_edit_singleline(self.selected_xmx.as_mut().unwrap());
 
-                if runtime_config::validate_xmx(self.selected_xmx.as_ref().unwrap())
+                if ui
+                    .button(LangMessage::OpenLauncherDirectory.to_string(&config.lang))
+                    .clicked()
+                {
+                    open::that(runtime_config::get_data_dir(config)).unwrap();
+                }
+
+                if utils::validate_xmx(self.selected_xmx.as_ref().unwrap())
                     && config.xmx != self.selected_xmx.as_ref().unwrap().as_str()
                 {
                     config.xmx = self.selected_xmx.as_ref().unwrap().clone();

@@ -1,4 +1,5 @@
 use crate::config::build_config;
+use crate::constants;
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
@@ -25,4 +26,24 @@ pub fn is_read_only_error(e: &Box<dyn Error>) -> bool {
         return e.kind() == std::io::ErrorKind::PermissionDenied || e.raw_os_error() == Some(18);
     }
     false
+}
+
+pub fn validate_xmx(xmx: &str) -> bool {
+    let xmx = xmx.trim();
+    if xmx.is_empty() {
+        return false;
+    }
+
+    let xmx = xmx.to_uppercase();
+    if xmx.ends_with("M") {
+        if let Ok(xmx) = xmx[..xmx.len() - 1].parse::<u32>() {
+            return xmx >= constants::MIN_JAVA_MB && xmx <= constants::MAX_JAVA_MB;
+        }
+    } else if xmx.ends_with("G") {
+        if let Ok(xmx) = xmx[..xmx.len() - 1].parse::<u32>() {
+            return xmx >= constants::MIN_JAVA_MB * 1024 && xmx <= constants::MAX_JAVA_MB * 1024;
+        }
+    }
+
+    return false;
 }

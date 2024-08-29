@@ -15,9 +15,10 @@ pub struct Config {
     pub xmx: String,
     pub modpack_name: Option<String>,
     pub lang: Lang,
+    pub close_launcher_after_launch: bool,
 }
 
-fn get_data_dir(config: &Config) -> PathBuf {
+pub fn get_data_dir(config: &Config) -> PathBuf {
     let data_dir = match &config.data_dir {
         None => dirs::data_dir()
             .expect("Failed to get data directory")
@@ -95,6 +96,7 @@ pub fn load_config() -> Config {
         xmx: String::from(constants::DEFAULT_JAVA_XMX),
         modpack_name: None,
         lang: constants::DEFAULT_LANG,
+        close_launcher_after_launch: true,
     };
     return config;
 }
@@ -105,22 +107,10 @@ pub fn save_config(config: &Config) {
     std::fs::write(&config_path, config_str).expect("Failed to write config file");
 }
 
-pub fn validate_xmx(xmx: &str) -> bool {
-    let xmx = xmx.trim();
-    if xmx.is_empty() {
-        return false;
+pub fn get_logs_dir() -> PathBuf {
+    let logs_dir = get_data_dir(&load_config()).join("logs");
+    if !logs_dir.exists() {
+        std::fs::create_dir_all(&logs_dir).expect("Failed to create logs directory");
     }
-
-    let xmx = xmx.to_uppercase();
-    if xmx.ends_with("M") {
-        if let Ok(xmx) = xmx[..xmx.len() - 1].parse::<u32>() {
-            return xmx >= constants::MIN_JAVA_MB && xmx <= constants::MAX_JAVA_MB;
-        }
-    } else if xmx.ends_with("G") {
-        if let Ok(xmx) = xmx[..xmx.len() - 1].parse::<u32>() {
-            return xmx >= constants::MIN_JAVA_MB * 1024 && xmx <= constants::MAX_JAVA_MB * 1024;
-        }
-    }
-
-    return false;
+    logs_dir
 }

@@ -5,8 +5,8 @@ use tokio::fs;
 use tokio::process::{Child, Command as TokioCommand};
 
 use crate::auth::elyby::ELY_BY_BASE;
-use crate::config::build_config;
 use crate::config::runtime_config::{get_assets_dir, get_minecraft_dir, Config};
+use crate::config::{build_config, runtime_config};
 use crate::modpack::index::ModpackIndex;
 
 use super::compat;
@@ -240,13 +240,14 @@ pub async fn launch(
     // "Assertion failed: (count <= len && "snprintf() output has been truncated"), function LOAD_ERROR, file dispatch.c, line 74."
     std::env::remove_var("DYLD_FALLBACK_LIBRARY_PATH");
 
+    let file =
+        std::fs::File::create(runtime_config::get_logs_dir().join("latest_minecraft_launch.log"))?;
+    cmd.stdout(file.try_clone()?);
+    cmd.stderr(file);
+
     #[cfg(target_os = "windows")]
     {
         use winapi::um::winbase::CREATE_NO_WINDOW;
-
-        cmd.stdin(std::process::Stdio::null());
-        cmd.stdout(std::process::Stdio::null());
-        cmd.stderr(std::process::Stdio::null());
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
 

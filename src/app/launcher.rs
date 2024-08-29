@@ -30,6 +30,9 @@ impl Launcher {
     ) {
         match runtime.block_on(launch::launch(selected_modpack, config, online)) {
             Ok(child) => {
+                if config.close_launcher_after_launch {
+                    std::process::exit(0);
+                }
                 self.status = LauncherStatus::Running { child };
             }
             Err(e) => {
@@ -53,25 +56,44 @@ impl Launcher {
         &mut self,
         runtime: &Runtime,
         ui: &mut egui::Ui,
-        config: &runtime_config::Config,
+        config: &mut runtime_config::Config,
         selected_modpack: &ModpackIndex,
         online: bool,
     ) {
-        match &self.status {
-            LauncherStatus::NotLaunched => {
+        match &mut self.status {
+            LauncherStatus::Running { child } => {
+                ui.label(LangMessage::Running.to_string(&config.lang));
+                if ui
+                    .button(LangMessage::KillMinecraft.to_string(&config.lang))
+                    .clicked()
+                {
+                    let _ = runtime.block_on(child.kill());
+                }
+            }
+            _ => {
                 if ui
                     .button(LangMessage::Launch.to_string(&config.lang))
                     .clicked()
                 {
                     self.launch(runtime, config, selected_modpack.clone(), online);
                 }
+
+                ui.checkbox(
+                    &mut config.close_launcher_after_launch,
+                    LangMessage::CloseLauncherAfterLaunch.to_string(&config.lang),
+                );
             }
+        }
+
+        match &self.status {
             LauncherStatus::Error(e) => {
                 ui.label(LangMessage::LaunchError(e.clone()).to_string(&config.lang));
             }
-            _ => {
-                ui.label(LangMessage::Running.to_string(&config.lang));
-            }
+            _ => {}
         }
     }
+}
+
+impl Drop for Launcher {
+    fn drop(&mut self) {}
 }

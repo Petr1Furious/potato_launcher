@@ -200,10 +200,8 @@ impl ModpackSyncState {
 
         if self.modpack_sync_window_open {
             egui::Window::new(LangMessage::SyncModpack.to_string(&config.lang))
-            .open(&mut self.modpack_sync_window_open)
-            .show(
-                ui.ctx(),
-                |ui| {
+                .open(&mut self.modpack_sync_window_open)
+                .show(ui.ctx(), |ui| {
                     ui.checkbox(
                         &mut self.force_overwrite_checked,
                         LangMessage::ForceOverwrite.to_string(&config.lang),
@@ -223,8 +221,7 @@ impl ModpackSyncState {
                     if self.modpack_sync_task.is_some() {
                         self.modpack_sync_progress_bar.render(ui, &config.lang);
                     }
-                },
-            );
+                });
         } else {
             if self.modpack_sync_task.is_some() {
                 self.modpack_sync_progress_bar.render(ui, &config.lang);
