@@ -1,6 +1,5 @@
 use futures::StreamExt as _;
 use reqwest::Client;
-use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
 use std::{env, fs};
@@ -80,7 +79,7 @@ pub async fn download_new_launcher(
 }
 
 #[cfg(target_os = "macos")]
-fn unarchive_tar_gz(archive_data: &[u8], dest_dir: &Path) -> std::io::Result<()> {
+fn unarchive_tar_gz(archive_data: &[u8], dest_dir: &std::path::Path) -> std::io::Result<()> {
     use flate2::read::GzDecoder;
     use tar::Archive;
 
@@ -96,41 +95,16 @@ fn unarchive_tar_gz(archive_data: &[u8], dest_dir: &Path) -> std::io::Result<()>
     Ok(())
 }
 
-#[cfg(target_os = "linux")]
-fn replace_binary(current_exe: &Path, new_binary: &[u8]) -> std::io::Result<()> {
-    use super::compat::chmod_x;
-
-    let temp_path =
-        utils::get_temp_dir().join(format!("{}-new", build_config::get_launcher_name()));
-    fs::write(&temp_path, new_binary)?;
-    chmod_x(&temp_path)?;
-    fs::rename(temp_path, current_exe)?;
-    Ok(())
-}
-
-#[cfg(target_os = "windows")]
-fn replace_binary(current_path: &Path, new_binary: &[u8]) -> std::io::Result<()> {
-    let temp_path =
-        utils::get_temp_dir().join(format!("{}-new.exe", build_config::get_launcher_name()));
-    fs::write(&temp_path, new_binary)?;
-    Command::new("cmd")
-        .args(&[
-            "/C",
-            "move",
-            "/Y",
-            temp_path.to_str().unwrap(),
-            current_path.to_str().unwrap(),
-        ])
-        .spawn()?;
-    Ok(())
-}
-
 #[cfg(not(target_os = "macos"))]
 pub fn replace_launcher_and_start(new_binary: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     let current_exe = env::current_exe()?;
-    replace_binary(&current_exe, &new_binary)?;
-    let args: Vec<String> = env::args().collect();
 
+    let new_exe = utils::get_temp_dir().join("new_launcher");
+    fs::write(&new_exe, new_binary)?;
+    self_replace::self_replace(&new_exe)?;
+    fs::remove_file(&new_exe)?;
+
+    let args: Vec<String> = env::args().collect();
     Command::new(&current_exe).args(&args[1..]).spawn()?;
     std::process::exit(0);
 }

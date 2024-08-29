@@ -3283,6 +3283,7 @@ dependencies = [
  "regex",
  "reqwest",
  "rfd",
+ "self-replace",
  "serde",
  "serde_json",
  "sha1",
@@ -3824,6 +3825,17 @@ checksum = "75da29fe9b9b08fe9d6b22b5b4bcbc75d8db3aa31e639aa56bb62e9d46bfceaf"
 dependencies = [
  "core-foundation-sys",
  "libc",
+]
+
+[[package]]
+name = "self-replace"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7828a58998685d8bf5a3c5e7a3379a5867289c20828c3ee436280b44b598515"
+dependencies = [
+ "fastrand 1.9.0",
+ "tempfile",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
