@@ -89,7 +89,7 @@ fn authenticate(
                     if re.is_connect() {
                         connect_error = true;
                     }
-                    if re.is_timeout() {
+                    if re.is_timeout() || re.status().map(|s| s.as_u16()) == Some(524) {
                         timeout_error = true;
                     }
                 }

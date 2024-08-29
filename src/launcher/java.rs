@@ -1,7 +1,7 @@
 use flate2::read::GzDecoder;
 use futures::StreamExt;
 use regex::Regex;
-use reqwest::Client;
+use reqwest::{Client, Url};
 use serde::Deserialize;
 use std::fs;
 use std::io::Write;
@@ -212,7 +212,10 @@ impl std::fmt::Display for JavaDownloadError {
     }
 }
 
-fn get_java_download_params(required_version: &str) -> Result<String, JavaDownloadError> {
+fn get_java_download_params(
+    required_version: &str,
+    archive_type: &str,
+) -> Result<String, JavaDownloadError> {
     let arch = match std::env::consts::ARCH {
         "x86_64" | "amd64" => "x64",
         "aarch64" => "aarch64",
@@ -227,8 +230,8 @@ fn get_java_download_params(required_version: &str) -> Result<String, JavaDownlo
     };
 
     let params = format!(
-        "java_version={}&os={}&arch={}&archive_type=tar.gz&java_package_type=jre&javafx_bundled=false&latest=true&release_status=ga",
-        required_version, os, arch
+        "java_version={}&os={}&arch={}&archive_type={}&java_package_type=jre&javafx_bundled=false&latest=true&release_status=ga",
+        required_version, os, arch, archive_type
     );
 
     Ok(params)
@@ -240,61 +243,75 @@ pub async fn download_java(
     progress_bar: Arc<dyn ProgressBar + Send + Sync>,
 ) -> Result<JavaInstallation, Box<dyn std::error::Error>> {
     let client = Client::new();
-    let query_str = get_java_download_params(required_version)?;
-    let versions_url = format!(
-        "https://api.azul.com/metadata/v1/zulu/packages/?{}",
-        query_str
-    );
 
-    let response = client.get(&versions_url).send().await?;
-    let body = response.text().await?;
-    let versions: Value = serde_json::from_str(&body)?;
+    for archive_type in ["tar.gz", "zip"] {
+        let query_str = get_java_download_params(required_version, archive_type)?;
 
-    if versions.as_array().unwrap().is_empty() {
-        return Err(Box::new(JavaDownloadError::NoJavaVersionsAvailable));
-    }
+        let versions_url = format!(
+            "https://api.azul.com/metadata/v1/zulu/packages/?{}",
+            query_str
+        );
 
-    let version_url = versions[0]["download_url"].as_str().unwrap();
-    let response = client.get(version_url).send().await?;
+        let response = client.get(&versions_url).send().await?;
+        let body = response.text().await?;
+        let versions: Value = serde_json::from_str(&body)?;
 
-    let java_download_path = get_temp_dir().join("java_download.tar.gz");
-    let mut file = fs::File::create(&java_download_path)?;
-
-    let total_size = response.content_length().unwrap_or(0);
-    progress_bar.set_length(total_size);
-    progress_bar.set_message(LangMessage::DownloadingJava);
-
-    let mut stream = response.bytes_stream();
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk?;
-        file.write_all(&chunk)?;
-        progress_bar.inc(chunk.len() as u64);
-    }
-    progress_bar.finish();
-
-    let tar_gz = fs::File::open(&java_download_path)?;
-    let tar = GzDecoder::new(tar_gz);
-    let mut archive = Archive::new(tar);
-
-    let target_dir = java_dir.join(required_version);
-    fs::create_dir_all(&target_dir)?;
-
-    for entry in archive.entries()? {
-        let mut entry = entry?;
-        let path = entry.path()?;
-        let path = path.strip_prefix(path.components().next().unwrap())?; // Remove the tar directory name
-        let full_path = target_dir.join(path);
-        if let Some(parent) = full_path.parent() {
-            fs::create_dir_all(parent)?;
+        if versions.as_array().ok_or_else(|| "No versions array")?.is_empty() {
+            continue;
         }
-        entry.unpack(full_path)?;
+
+        let version_url = versions[0]["download_url"].as_str().ok_or_else(|| "No download URL")?;
+        let response = client.get(version_url).send().await?;
+
+        let java_download_path = get_temp_dir().join(format!("java_download.{}", archive_type));
+        let mut file = fs::File::create(&java_download_path)?;
+
+        let total_size = response.content_length().unwrap_or(0);
+        progress_bar.set_length(total_size);
+        progress_bar.set_message(LangMessage::DownloadingJava);
+
+        let mut stream = response.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk?;
+            file.write_all(&chunk)?;
+            progress_bar.inc(chunk.len() as u64);
+        }
+        progress_bar.finish();
+
+        let target_dir = java_dir.join(required_version);
+        if target_dir.exists() {
+            fs::remove_dir_all(&target_dir)?;
+        }
+        fs::create_dir_all(&target_dir)?;
+
+        if archive_type == "tar.gz" {
+            let tar_gz = fs::File::open(&java_download_path)?;
+            let tar = GzDecoder::new(tar_gz);
+            let mut archive = Archive::new(tar);
+            archive.unpack(&java_dir)?;
+        } else {
+            let zip = fs::File::open(&java_download_path)?;
+            let mut archive = zip::ZipArchive::new(zip)?;
+            archive.extract(&java_dir)?;
+        }
+
+        let url = Url::parse(version_url)?;
+        let filename = url
+            .path_segments()
+            .and_then(|segments| segments.last())
+            .ok_or_else(|| "No file name in URL")?
+            .strip_suffix(&format!(".{}", archive_type))
+            .ok_or_else(|| "No file extension in URL")?;
+        fs::rename(java_dir.join(filename), &target_dir)?;
+
+        let java_path = target_dir.join("bin").join(JAVA_BINARY_NAME);
+        match get_installation(&java_path) {
+            Some(installation) => return Ok(installation),
+            None => {}
+        }
     }
 
-    let java_path = target_dir.join("bin").join(JAVA_BINARY_NAME);
-    match get_installation(&java_path) {
-        Some(installation) => Ok(installation),
-        None => Err(JavaDownloadError::NoJavaVersionsAvailable.into()),
-    }
+    Err(Box::new(JavaDownloadError::NoJavaVersionsAvailable))
 }
 
 pub fn get_java(required_version: &str, java_dir: &Path) -> Option<JavaInstallation> {

@@ -29,6 +29,7 @@ tar = "0.4.41"
 tokio = { version = "1.39.1", features = ["full"] }
 warp = "0.3.7"
 which = "6.0.2"
+zip = "2.2.0"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["fileapi", "winbase"] }
