@@ -188,7 +188,14 @@ impl ModpackSyncState {
             .button(LangMessage::SyncModpack.to_string(&config.lang))
             .clicked()
         {
-            self.modpack_sync_window_open = true;
+            if self.status == ModpackSyncStatus::NotSynced {
+                self.status = ModpackSyncStatus::NeedSync {
+                    ignore_version: false,
+                    force_overwrite: false,
+                };
+            } else {
+                self.modpack_sync_window_open = true;
+            }
         }
 
         if self.modpack_sync_window_open {

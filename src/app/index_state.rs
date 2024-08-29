@@ -86,7 +86,7 @@ impl IndexState {
     pub fn update(
         &mut self,
         runtime: &tokio::runtime::Runtime,
-        config: &runtime_config::Config,
+        config: &mut runtime_config::Config,
         ctx: &egui::Context,
     ) -> UpdateResult {
         if self.status == FetchStatus::NotFetched && self.fetch_task.is_none() {
@@ -100,6 +100,10 @@ impl IndexState {
         if let Some(task) = self.fetch_task.as_ref() {
             if let Some(result) = task.take_result() {
                 self.status = result.status.clone();
+                if config.modpack_name.is_none() && result.indexes.len() == 1 {
+                    config.modpack_name = result.indexes.first().map(|x| x.modpack_name.clone());
+                    runtime_config::save_config(config);
+                }
                 self.indexes = Some(result.indexes.clone());
                 self.fetch_task = None;
                 return UpdateResult::IndexesUpdated;

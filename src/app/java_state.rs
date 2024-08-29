@@ -237,6 +237,7 @@ impl JavaState {
         config: &mut runtime_config::Config,
         selected_index: &ModpackIndex,
     ) {
+        let mut update_status = false;
         egui::Window::new(LangMessage::JavaSettings.to_string(&config.lang))
             .open(&mut self.settings_opened)
             .show(ui.ctx(), |ui| {
@@ -259,6 +260,7 @@ impl JavaState {
                                 path.display().to_string(),
                             );
                             runtime_config::save_config(config);
+                            update_status = true;
                         } else {
                             self.picked_java_path = None;
                         }
@@ -275,6 +277,9 @@ impl JavaState {
                     runtime_config::save_config(config);
                 }
             });
+        if update_status {
+            self.status = JavaDownloadStatus::Downloaded;
+        }
     }
 
     pub fn ready_for_launch(&self) -> bool {

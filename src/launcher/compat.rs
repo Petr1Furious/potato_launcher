@@ -1,6 +1,3 @@
-#[cfg(target_os = "linux")]
-use std::path::Path;
-
 #[cfg(target_os = "windows")]
 pub fn win_get_long_path_name(path: &str) -> Result<String, std::io::Error> {
     use std::ffi::OsStr;
