@@ -282,16 +282,14 @@ pub async fn download_java(
         if target_dir.exists() {
             fs::remove_dir_all(&target_dir)?;
         }
-        fs::create_dir_all(&target_dir)?;
 
+        let archive = fs::File::open(&java_download_path)?;
         if archive_type == "tar.gz" {
-            let tar_gz = fs::File::open(&java_download_path)?;
-            let tar = GzDecoder::new(tar_gz);
+            let tar = GzDecoder::new(archive);
             let mut archive = Archive::new(tar);
             archive.unpack(&java_dir)?;
         } else {
-            let zip = fs::File::open(&java_download_path)?;
-            let mut archive = zip::ZipArchive::new(zip)?;
+            let mut archive = zip::ZipArchive::new(archive)?;
             archive.extract(&java_dir)?;
         }
 
