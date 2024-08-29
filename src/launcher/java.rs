@@ -43,7 +43,15 @@ fn get_installation(path: &Path) -> Option<JavaInstallation> {
         which::which(path).ok()?
     };
 
-    let output = Command::new(&path).arg("-version").output().ok()?;
+    let mut cmd = Command::new(&path);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        use winapi::um::winbase::CREATE_NO_WINDOW;
+
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    let output = cmd.arg("-version").output().ok()?;
 
     let version_result = String::from_utf8_lossy(&output.stderr);
     let captures = JAVA_VERSION_RGX.captures(&version_result)?;

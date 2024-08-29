@@ -242,7 +242,8 @@ pub async fn launch(
 
     #[cfg(target_os = "windows")]
     {
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        use winapi::um::winbase::CREATE_NO_WINDOW;
+
         cmd.stdin(std::process::Stdio::null());
         cmd.stdout(std::process::Stdio::null());
         cmd.stderr(std::process::Stdio::null());
