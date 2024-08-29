@@ -78,10 +78,14 @@ impl Launcher {
                     self.launch(runtime, config, selected_modpack.clone(), online);
                 }
 
+                let old_close_launcher_after_launch = config.close_launcher_after_launch;
                 ui.checkbox(
                     &mut config.close_launcher_after_launch,
                     LangMessage::CloseLauncherAfterLaunch.to_string(&config.lang),
                 );
+                if old_close_launcher_after_launch != config.close_launcher_after_launch {
+                    runtime_config::save_config(config);
+                }
             }
         }
 

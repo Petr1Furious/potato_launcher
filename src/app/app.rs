@@ -8,6 +8,7 @@ use super::index_state::IndexState;
 use super::java_state::JavaState;
 use super::language_selector::LanguageSelector;
 use super::launcher::Launcher;
+use super::modpack_sync_state;
 use super::modpack_sync_state::ModpackSyncState;
 use crate::config::build_config;
 use crate::config::runtime_config;
@@ -88,13 +89,17 @@ impl LauncherApp {
                 }
 
                 let index_online = self.index_state.online();
-                self.modpack_sync_state.update(
+                let update_result = self.modpack_sync_state.update(
                     &self.runtime,
                     &selected_modpack,
                     &self.config,
                     need_modpack_check,
                     index_online,
                 );
+                if let modpack_sync_state::UpdateResult::ModpackSynced = update_result {
+                    need_modpack_check = true;
+                }
+
                 self.java_state.update(
                     &self.runtime,
                     &selected_modpack,
