@@ -221,13 +221,10 @@ impl JavaState {
         {
             self.settings_opened = true;
 
-            self.picked_java_path = Some(
-                config
-                    .java_paths
-                    .get(&selected_index.modpack_name)
-                    .unwrap()
-                    .clone(),
-            );
+            self.picked_java_path = config
+                .java_paths
+                .get(&selected_index.modpack_name)
+                .cloned();
             self.selected_xmx = Some(config.xmx.clone());
         }
 
