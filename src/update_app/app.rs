@@ -39,6 +39,7 @@ pub struct UpdateApp {
     update_progress_bar: Arc<GuiProgressBar>,
     update_status: UpdateStatus,
     download_status: DownloadStatus,
+    closed_by_up_to_date: bool,
 }
 
 pub fn run_gui(config: &runtime_config::Config) {
@@ -71,6 +72,12 @@ impl eframe::App for UpdateApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.ui(ctx);
     }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        if !self.closed_by_up_to_date {
+            std::process::exit(0);
+        }
+    }
 }
 
 impl UpdateApp {
@@ -102,6 +109,7 @@ impl UpdateApp {
             update_progress_bar,
             update_status: UpdateStatus::Checking,
             download_status: DownloadStatus::NeedDownloading,
+            closed_by_up_to_date: false,
         }
     }
 
@@ -175,6 +183,7 @@ impl UpdateApp {
                             });
                         }
                         UpdateStatus::UpToDate => {
+                            self.closed_by_up_to_date = true;
                             ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                         }
                         UpdateStatus::Error(_) => {}

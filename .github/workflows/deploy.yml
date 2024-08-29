@@ -49,7 +49,7 @@ jobs:
             echo "$VERSION" > launcher/version_windows.txt
           elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
             cargo build --release
-            mv "target/release/potato_launcher" "launcher/${DISPLAY_LAUNCHER_NAME}"
+            mv "target/release/potato_launcher" "launcher/${LAUNCHER_NAME}"
             echo "$VERSION" > launcher/version_linux.txt
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
             mkdir -p icon.iconset

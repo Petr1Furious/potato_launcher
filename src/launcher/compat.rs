@@ -1,18 +1,6 @@
 #[cfg(target_os = "linux")]
 use std::path::Path;
 
-#[cfg(target_os = "linux")]
-pub fn chmod_x<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
-    use std::fs;
-    use std::os::unix::fs::PermissionsExt;
-
-    let path = path.as_ref();
-    let mut perms = fs::metadata(path)?.permissions();
-    perms.set_mode(perms.mode() | 0o111);
-    fs::set_permissions(path, perms)?;
-    Ok(())
-}
-
 #[cfg(target_os = "windows")]
 pub fn win_get_long_path_name(path: &str) -> Result<String, std::io::Error> {
     use std::ffi::OsStr;
