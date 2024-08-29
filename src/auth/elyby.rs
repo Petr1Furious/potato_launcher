@@ -54,7 +54,7 @@ impl ElyByAuthProvider {
                 "https://account.ely.by/oauth2/v1?client_id={}&redirect_uri={}&response_type=code&scope=account_info%20minecraft_server_session&prompt=select_account",
                 build_config::get_elyby_client_id().unwrap(), redirect_uri
             );
-            open::that(&url).unwrap();
+            let _ = open::that(&url);
             self.message_provider
                 .set_message(LangMessage::AuthMessage { url });
         } else {

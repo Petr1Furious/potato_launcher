@@ -46,7 +46,7 @@ impl TGAuthProvider {
                 .text()
                 .await?;
 
-            let bot_info: BotInfo = serde_json::from_str(&body).unwrap();
+            let bot_info: BotInfo = serde_json::from_str(&body)?;
             self.bot_name = Some(bot_info.bot_username);
         }
         Ok(self.bot_name.clone().unwrap())
@@ -63,10 +63,10 @@ impl AuthProvider for TGAuthProvider {
             .await?
             .text()
             .await?;
-        let start_resp: LoginStartResponse = serde_json::from_str(&body).unwrap();
+        let start_resp: LoginStartResponse = serde_json::from_str(&body)?;
 
         let tg_deeplink = format!("https://t.me/{}?start={}", bot_name, start_resp.code);
-        open::that(&tg_deeplink).unwrap();
+        let _ = open::that(&tg_deeplink);
         self.message_provider
             .set_message(LangMessage::AuthMessage { url: tg_deeplink });
 
@@ -87,7 +87,7 @@ impl AuthProvider for TGAuthProvider {
 
                     let body = resp.text().await?;
                     let poll_resp: HashMap<String, serde_json::Value> =
-                        serde_json::from_str(&body).unwrap();
+                        serde_json::from_str(&body)?;
 
                     access_token = poll_resp
                         .get("user")
