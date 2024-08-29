@@ -219,7 +219,7 @@ fn get_java_download_params(required_version: &str) -> Result<String, JavaDownlo
         _ => return Err(JavaDownloadError::UnsupportedArchitecture),
     };
 
-    let os_ = match std::env::consts::OS {
+    let os = match std::env::consts::OS {
         "windows" => "windows",
         "linux" => "linux-glibc",
         "macos" => "macos",
@@ -228,7 +228,7 @@ fn get_java_download_params(required_version: &str) -> Result<String, JavaDownlo
 
     let params = format!(
         "java_version={}&os={}&arch={}&archive_type=tar.gz&java_package_type=jre&javafx_bundled=false&latest=true&release_status=ga",
-        required_version, os_, arch
+        required_version, os, arch
     );
 
     Ok(params)

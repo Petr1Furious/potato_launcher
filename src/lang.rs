@@ -10,6 +10,7 @@ pub enum Lang {
 pub enum LangMessage {
     AuthMessage { url: String },
     NoConnectionToAuthServer { offline_username: Option<String> },
+    AuthTimeout,
     AuthError(String),
     AuthorizedAs(String),
     Authorizing,
@@ -81,6 +82,10 @@ impl LangMessage {
                     "Нет подключения к серверу авторизации.\nОфлайн имя пользователя: {}",
                     username.as_ref().unwrap_or(&"Отсутствует".to_string())
                 ),
+            },
+            LangMessage::AuthTimeout => match lang {
+                Lang::English => "Authorization timeout".to_string(),
+                Lang::Russian => "Превышено время авторизации".to_string(),
             },
             LangMessage::AuthError(e) => match lang {
                 Lang::English => format!("Authorization error: {}", e),

@@ -15,8 +15,9 @@ use super::task::Task;
 enum AuthStatus {
     NotAuthorized,
     Authorized,
-    AuthorizeErrorOffline,
     AuthorizeError(String),
+    AuthorizeErrorOffline,
+    AuthorizeErrorTimeout,
 }
 
 struct AuthResult {
@@ -83,15 +84,21 @@ fn authenticate(
 
             Err(e) => {
                 let mut connect_error = false;
+                let mut timeout_error = false;
                 if let Some(re) = e.downcast_ref::<reqwest::Error>() {
                     if re.is_connect() {
                         connect_error = true;
+                    }
+                    if re.is_timeout() {
+                        timeout_error = true;
                     }
                 }
 
                 AuthResult {
                     status: if connect_error {
                         AuthStatus::AuthorizeErrorOffline
+                    } else if timeout_error {
+                        AuthStatus::AuthorizeErrorTimeout
                     } else {
                         AuthStatus::AuthorizeError(e.to_string())
                     },
@@ -169,6 +176,7 @@ impl AuthState {
                 offline_username: config_username.map(|username| username.to_string()),
             }
             .to_string(lang),
+            AuthStatus::AuthorizeErrorTimeout => LangMessage::AuthTimeout.to_string(lang),
             AuthStatus::Authorized => LangMessage::AuthorizedAs(
                 config_username
                     .expect("Authorized, but no username")
@@ -183,6 +191,7 @@ impl AuthState {
                 egui::Window::new(LangMessage::Authorization.to_string(lang)).show(
                     ui.ctx(),
                     |ui| {
+                        ui.label(message.to_string(lang));
                         let url = match message {
                             LangMessage::AuthMessage { url } => Some(url),
                             _ => None,
