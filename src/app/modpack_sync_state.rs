@@ -225,6 +225,10 @@ impl ModpackSyncState {
                     }
                 },
             );
+        } else {
+            if self.modpack_sync_task.is_some() {
+                self.modpack_sync_progress_bar.render(ui, &config.lang);
+            }
         }
     }
 
