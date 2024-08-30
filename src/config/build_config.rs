@@ -49,3 +49,5 @@ pub fn get_display_launcher_name() -> String {
         None => LAUNCHER_NAME.to_string(),
     }
 }
+
+pub const LAUNCHER_ICON: &[u8] = include_bytes!("../../assets/potato_launcher.png");

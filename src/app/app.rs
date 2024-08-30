@@ -13,6 +13,7 @@ use super::modpack_sync_state::ModpackSyncState;
 use crate::config::build_config;
 use crate::config::runtime_config;
 use crate::lang::LangMessage;
+use crate::utils;
 
 pub struct LauncherApp {
     runtime: Runtime,
@@ -27,7 +28,7 @@ pub struct LauncherApp {
 
 pub fn run_gui(config: runtime_config::Config) {
     let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size((300.0, 300.0)),
+        viewport: egui::ViewportBuilder::default().with_inner_size((300.0, 300.0)).with_icon(utils::get_icon_data()),
         ..Default::default()
     };
 
