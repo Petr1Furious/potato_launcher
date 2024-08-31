@@ -93,14 +93,14 @@ jobs:
           fi
 
       - name: Upload to server
-        if: github.ref == 'refs/heads/rewrite-in-rust'
+        if: github.ref == 'refs/heads/master'
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_KEY }}
           known_hosts: no
 
       - name: Deploy to server
-        if: github.ref == 'refs/heads/rewrite-in-rust'
+        if: github.ref == 'refs/heads/master'
         env:
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_ADDR: ${{ secrets.SERVER_ADDR }}
