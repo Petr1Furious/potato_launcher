@@ -21,13 +21,15 @@ enum UpdateStatus {
     Checking,
     NeedUpdate,
     UpToDate,
-    Error(String),
+    UpdateError(String),
+    UpdateErrorOffline,
 }
 
 enum DownloadStatus {
     NeedDownloading,
     Downloaded(Vec<u8>),
-    Error(String),
+    DownloadError(String),
+    DownloadErrorOffline,
     ErrorReadOnly,
 }
 
@@ -92,7 +94,8 @@ impl UpdateApp {
             let _ = need_update_sender.send(match need_update().await {
                 Ok(true) => UpdateStatus::NeedUpdate,
                 Ok(false) => UpdateStatus::UpToDate,
-                Err(e) => UpdateStatus::Error(e.to_string()),
+                Err(e) if utils::is_connect_error(&e) => UpdateStatus::UpdateErrorOffline,
+                Err(e) => UpdateStatus::UpdateError(e.to_string()),
             });
             ctx_clone.request_repaint();
         });
@@ -132,7 +135,7 @@ impl UpdateApp {
                         self.download_status = if utils::is_read_only_error(&e) {
                             DownloadStatus::ErrorReadOnly
                         } else {
-                            DownloadStatus::Error(e.to_string())
+                            DownloadStatus::DownloadError(e.to_string())
                         };
                     } else {
                         panic!("Launcher should have been replaced and launched");
@@ -147,15 +150,12 @@ impl UpdateApp {
                         DownloadStatus::Downloaded(_) => {
                             ui.label(LangMessage::Launching.to_string(&self.lang));
                         }
-                        DownloadStatus::Error(e) => {
-                            self.download_status = DownloadStatus::Error(e.to_string());
-                        }
+                        DownloadStatus::DownloadError(_) => {}
+                        DownloadStatus::DownloadErrorOffline => {}
                         DownloadStatus::NeedDownloading => {
                             panic!("Should not receive NeedDownloading");
                         }
-                        DownloadStatus::ErrorReadOnly => {
-                            self.download_status = DownloadStatus::ErrorReadOnly;
-                        }
+                        DownloadStatus::ErrorReadOnly => {}
                     }
                     self.download_status = download_status;
                 }
@@ -171,13 +171,9 @@ impl UpdateApp {
                                 let _ = new_binary_sender.send(
                                     match download_new_launcher(update_progress_bar).await {
                                         Ok(new_binary) => DownloadStatus::Downloaded(new_binary),
-                                        Err(e) => {
-                                            if utils::is_read_only_error(&e) {
-                                                DownloadStatus::ErrorReadOnly
-                                            } else {
-                                                DownloadStatus::Error(e.to_string())
-                                            }
-                                        }
+                                        Err(e) if utils::is_read_only_error(&e) => DownloadStatus::ErrorReadOnly,
+                                        Err(e) if utils::is_connect_error(&e) => DownloadStatus::DownloadErrorOffline,
+                                        Err(e) => DownloadStatus::DownloadError(e.to_string()),
                                     },
                                 );
                                 ctx.request_repaint();
@@ -187,7 +183,8 @@ impl UpdateApp {
                             self.closed_by_up_to_date = true;
                             ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                         }
-                        UpdateStatus::Error(_) => {}
+                        UpdateStatus::UpdateError(_) => {}
+                        UpdateStatus::UpdateErrorOffline => {}
                         UpdateStatus::Checking => {
                             panic!("Should not receive Checking");
                         }
@@ -204,11 +201,15 @@ impl UpdateApp {
                     DownloadStatus::NeedDownloading => {
                         self.update_progress_bar.render(ui, &self.lang);
                     }
-                    DownloadStatus::Error(e) => {
+                    DownloadStatus::DownloadError(e) => {
                         ui.label(
                             LangMessage::ErrorDownloadingUpdate(e.to_string())
                                 .to_string(&self.lang),
                         );
+                        self.render_close_button(ui);
+                    }
+                    DownloadStatus::DownloadErrorOffline => {
+                        ui.label(LangMessage::NoConnectionToUpdateServer.to_string(&self.lang));
                         self.render_close_button(ui);
                     }
                     DownloadStatus::Downloaded(_) => {}
@@ -218,10 +219,14 @@ impl UpdateApp {
                     }
                 },
                 UpdateStatus::UpToDate => {}
-                UpdateStatus::Error(e) => {
+                UpdateStatus::UpdateError(e) => {
                     ui.label(
                         LangMessage::ErrorCheckingForUpdates(e.to_string()).to_string(&self.lang),
                     );
+                    self.render_close_button(ui);
+                }
+                UpdateStatus::UpdateErrorOffline => {
+                    ui.label(LangMessage::NoConnectionToUpdateServer.to_string(&self.lang));
                     self.render_close_button(ui);
                 }
             }

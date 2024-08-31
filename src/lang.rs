@@ -50,6 +50,7 @@ pub enum LangMessage {
     Launching,
     ErrorCheckingForUpdates(String),
     ErrorDownloadingUpdate(String),
+    NoConnectionToUpdateServer,
     ErrorReadOnly,
     ProceedToLauncher,
     Authorization,
@@ -79,11 +80,11 @@ impl LangMessage {
                 offline_username: username,
             } => match lang {
                 Lang::English => format!(
-                    "No connection to the authorization server.\nOffline username: {}",
+                    "Error: no connection to the authorization server.\nOffline username: {}",
                     username.as_ref().unwrap_or(&"None".to_string())
                 ),
                 Lang::Russian => format!(
-                    "Нет подключения к серверу авторизации.\nОфлайн имя пользователя: {}",
+                    "Ошибка: нет подключения к серверу авторизации.\nОфлайн имя пользователя: {}",
                     username.as_ref().unwrap_or(&"Отсутствует".to_string())
                 ),
             },
@@ -116,8 +117,8 @@ impl LangMessage {
                 Lang::Russian => "Список модпаков получен".to_string(),
             },
             LangMessage::NoConnectionToIndexServer => match lang {
-                Lang::English => "No connection to the modpack server".to_string(),
-                Lang::Russian => "Нет подключения к серверу модпаков".to_string(),
+                Lang::English => "Error: no connection to the modpack server".to_string(),
+                Lang::Russian => "Ошибка: нет подключения к серверу модпаков".to_string(),
             },
             LangMessage::ErrorFetchingRemoteIndexes(s) => match lang {
                 Lang::English => format!("Error fetching remote modpack list: {}", s),
@@ -160,8 +161,8 @@ impl LangMessage {
                 Lang::Russian => "Модпак синхронизирован".to_string(),
             },
             LangMessage::NoConnectionToSyncServer => match lang {
-                Lang::English => "No connection to the modpack sync server".to_string(),
-                Lang::Russian => "Нет подключения к серверу синхронизации модпаков".to_string(),
+                Lang::English => "Error: no connection to the modpack sync server".to_string(),
+                Lang::Russian => "Ошибка: нет подключения к серверу синхронизации модпаков".to_string(),
             },
             LangMessage::ModpackSyncError(e) => match lang {
                 Lang::English => format!("Error syncing modpack: {}", e),
@@ -188,8 +189,8 @@ impl LangMessage {
                 Lang::Russian => format!("Ошибка загрузки Java: {}", e),
             },
             LangMessage::NoConnectionToJavaServer => match lang {
-                Lang::English => "No connection to the Java download server".to_string(),
-                Lang::Russian => "Нет подключения к серверу загрузки Java".to_string(),
+                Lang::English => "Error: no connection to the Java download server".to_string(),
+                Lang::Russian => "Ошибка: нет подключения к серверу загрузки Java".to_string(),
             },
             LangMessage::JavaSettings => match lang {
                 Lang::English => "Java Settings".to_string(),
@@ -252,6 +253,10 @@ impl LangMessage {
             LangMessage::ErrorDownloadingUpdate(e) => match lang {
                 Lang::English => format!("Error downloading update: {}", e),
                 Lang::Russian => format!("Ошибка загрузки обновления: {}", e),
+            },
+            LangMessage::NoConnectionToUpdateServer => match lang {
+                Lang::English => "Error: no connection to the update server".to_string(),
+                Lang::Russian => "Ошибка: нет подключения к серверу обновлений".to_string(),
             },
             LangMessage::ErrorReadOnly => match lang {
                 Lang::English => {

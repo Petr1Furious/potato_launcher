@@ -1,5 +1,6 @@
 use futures::StreamExt as _;
 use reqwest::Client;
+use std::error::Error;
 use std::process::Command;
 use std::sync::Arc;
 use std::{env, fs};
@@ -39,14 +40,14 @@ lazy_static::lazy_static! {
     static ref UPDATE_URL: String = format!("{}/launcher/{}", build_config::get_server_base(), *LAUNCHER_FILE_NAME);
 }
 
-async fn fetch_new_version() -> Result<String, Box<dyn std::error::Error>> {
+async fn fetch_new_version() -> Result<String, Box<dyn Error + Send + Sync>> {
     let client = Client::new();
     let response = client.get(&*VERSION_URL).send().await?.error_for_status()?;
     let text = response.text().await?;
     Ok(text.trim().to_string())
 }
 
-pub async fn need_update() -> Result<bool, Box<dyn std::error::Error>> {
+pub async fn need_update() -> Result<bool, Box<dyn Error + Send + Sync>> {
     let new_version = fetch_new_version().await?;
     let current_version = build_config::get_version().expect("Version not set");
     Ok(new_version != current_version)
@@ -54,7 +55,7 @@ pub async fn need_update() -> Result<bool, Box<dyn std::error::Error>> {
 
 pub async fn download_new_launcher(
     progress_bar: Arc<dyn ProgressBar + Send + Sync>,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+) -> Result<Vec<u8>, Box<dyn Error + Send + Sync>> {
     let client = Client::new();
     let response = client
         .get(UPDATE_URL.as_str())
@@ -96,7 +97,7 @@ fn unarchive_tar_gz(archive_data: &[u8], dest_dir: &std::path::Path) -> std::io:
 }
 
 #[cfg(not(target_os = "macos"))]
-pub fn replace_launcher_and_start(new_binary: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+pub fn replace_launcher_and_start(new_binary: &[u8]) -> Result<(), Box<dyn Error + Send + Sync>> {
     let current_exe = env::current_exe()?;
 
     let new_exe = utils::get_temp_dir().join("new_launcher");
@@ -110,7 +111,7 @@ pub fn replace_launcher_and_start(new_binary: &[u8]) -> Result<(), Box<dyn std::
 }
 
 #[cfg(target_os = "macos")]
-pub fn replace_launcher_and_start(new_archive: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+pub fn replace_launcher_and_start(new_archive: &[u8]) -> Result<(), Box<dyn Error + Send + Sync>> {
     let current_exe = env::current_exe()?;
     let current_dir = current_exe
         .parent()
