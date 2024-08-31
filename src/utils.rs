@@ -28,7 +28,7 @@ pub fn is_read_only_error(e: &Box<dyn Error>) -> bool {
     false
 }
 
-pub fn is_connect_error(e: &Box<dyn Error>) -> bool {
+pub fn is_connect_error(e: &Box<dyn Error + Send + Sync>) -> bool {
     if let Some(e) = e.downcast_ref::<reqwest::Error>() {
         return e.is_connect();
     }

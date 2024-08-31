@@ -240,7 +240,7 @@ pub async fn download_java(
     required_version: &str,
     java_dir: &Path,
     progress_bar: Arc<dyn ProgressBar + Send + Sync>,
-) -> Result<JavaInstallation, Box<dyn std::error::Error>> {
+) -> Result<JavaInstallation, Box<dyn std::error::Error + Send + Sync>> {
     let client = Client::new();
 
     for archive_type in ["tar.gz", "zip"] {

@@ -6,6 +6,7 @@ use crate::config::runtime_config;
 use crate::lang::LangMessage;
 use crate::modpack::index::{self, ModpackIndex};
 use crate::progress::ProgressBar;
+use crate::utils;
 
 use super::progress_bar::GuiProgressBar;
 use super::task::Task;
@@ -19,6 +20,7 @@ enum ModpackSyncStatus {
     },
     Synced,
     SyncError(String),
+    SyncErrorOffline,
 }
 
 struct ModpackSyncResult {
@@ -58,7 +60,11 @@ fn sync_modpack(
                 status: ModpackSyncStatus::Synced,
             },
             Err(e) => ModpackSyncResult {
-                status: ModpackSyncStatus::SyncError(e.to_string()),
+                status: if utils::is_connect_error(&e) {
+                    ModpackSyncStatus::SyncErrorOffline
+                } else {
+                    ModpackSyncStatus::SyncError(e.to_string())
+                },
             },
         };
 
@@ -176,6 +182,7 @@ impl ModpackSyncState {
         let need_sync = match &self.status {
             ModpackSyncStatus::NotSynced => true,
             ModpackSyncStatus::SyncError(_) => true,
+            ModpackSyncStatus::SyncErrorOffline => true,
             ModpackSyncStatus::Syncing {
                 ignore_version: _,
                 force_overwrite: _,
@@ -205,6 +212,9 @@ impl ModpackSyncState {
             ModpackSyncStatus::Synced => LangMessage::ModpackSynced.to_string(&config.lang),
             ModpackSyncStatus::SyncError(e) => {
                 LangMessage::ModpackSyncError(e.clone()).to_string(&config.lang)
+            }
+            ModpackSyncStatus::SyncErrorOffline => {
+                LangMessage::NoConnectionToSyncServer.to_string(&config.lang)
             }
         });
 
