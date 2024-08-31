@@ -56,7 +56,9 @@ pub fn validate_xmx(xmx: &str) -> bool {
 }
 
 pub fn get_icon_data() -> egui::IconData {
-    let image = image::load_from_memory(build_config::LAUNCHER_ICON).expect("Failed to open icon path").into_rgba8();
+    let image = image::load_from_memory(build_config::LAUNCHER_ICON)
+        .expect("Failed to open icon path")
+        .into_rgba8();
     let (width, height) = image.dimensions();
     let rgba = image.into_raw();
     egui::IconData {

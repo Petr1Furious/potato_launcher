@@ -16,7 +16,7 @@ use super::task::Task;
 #[derive(Clone, PartialEq)]
 pub enum JavaDownloadStatus {
     NotDownloaded,
-    NeedDownload,
+    Downloading,
     Downloaded,
     DownloadError(String),
     DownloadErrorOffline,
@@ -106,6 +106,7 @@ impl JavaState {
                     index.modpack_name.clone(),
                     java_installation.path.to_str().unwrap().to_string(),
                 );
+                runtime_config::save_config(config);
             }
         }
     }
@@ -118,46 +119,42 @@ impl JavaState {
         need_java_check: bool,
     ) {
         if need_java_check {
-            self.java_download_task = None;
             self.check_java(index, config);
             if config.java_paths.get(&index.modpack_name).is_some() {
                 self.status = JavaDownloadStatus::Downloaded;
-            } else {
+            }
+            if config.java_paths.get(&index.modpack_name).is_none()
+                && self.status == JavaDownloadStatus::Downloaded
+            {
                 self.status = JavaDownloadStatus::NotDownloaded;
             }
 
             self.settings_opened = false;
         }
 
-        if self.status == JavaDownloadStatus::NeedDownload && self.java_download_task.is_none() {
-            if config.java_paths.get(&index.modpack_name).is_none() {
-                let java_dir = runtime_config::get_java_dir(config);
-                let java_download_task = download_java(
-                    runtime,
-                    &index.java_version,
-                    &java_dir,
-                    self.java_download_progress_bar.clone(),
-                );
-                self.java_download_progress_bar.reset();
-                self.java_download_task = Some(java_download_task);
-            }
+        if self.status == JavaDownloadStatus::Downloading && self.java_download_task.is_none() {
+            let java_dir = runtime_config::get_java_dir(config);
+            let java_download_task = download_java(
+                runtime,
+                &index.java_version,
+                &java_dir,
+                self.java_download_progress_bar.clone(),
+            );
+            self.java_download_progress_bar.reset();
+            self.java_download_task = Some(java_download_task);
         }
 
         if let Some(task) = self.java_download_task.as_ref() {
             if let Some(result) = task.take_result() {
                 if result.status == JavaDownloadStatus::Downloaded {
-                    config.java_paths.insert(
-                        index.modpack_name.clone(),
-                        result
-                            .java_installation
-                            .as_ref()
-                            .unwrap()
-                            .path
-                            .to_str()
-                            .unwrap()
-                            .to_string(),
-                    );
-                    runtime_config::save_config(config);
+                    let path = result.java_installation.as_ref().unwrap().path.clone();
+                    if java::check_java(&index.java_version, &path) {
+                        config.java_paths.insert(
+                            index.modpack_name.clone(),
+                            path.to_str().unwrap().to_string(),
+                        );
+                        runtime_config::save_config(config);
+                    }
                 }
                 self.status = result.status;
                 self.java_download_task = None;
@@ -178,6 +175,22 @@ impl JavaState {
         )
     }
 
+    fn is_download_needed(&self) -> bool {
+        match self.status {
+            JavaDownloadStatus::NotDownloaded => true,
+            JavaDownloadStatus::DownloadError(_) => true,
+            JavaDownloadStatus::DownloadErrorOffline => true,
+            JavaDownloadStatus::Downloading => false,
+            JavaDownloadStatus::Downloaded => false,
+        }
+    }
+
+    pub fn schedule_download_if_needed(&mut self) {
+        if self.is_download_needed() {
+            self.status = JavaDownloadStatus::Downloading;
+        }
+    }
+
     pub fn render_ui(
         &mut self,
         ui: &mut egui::Ui,
@@ -193,7 +206,7 @@ impl JavaState {
                     .to_string(&config.lang),
                 );
             }
-            JavaDownloadStatus::NeedDownload => {} // message is shown in progress bar
+            JavaDownloadStatus::Downloading => {} // message is shown in progress bar
             JavaDownloadStatus::DownloadError(ref e) => {
                 ui.label(LangMessage::ErrorDownloadingJava(e.clone()).to_string(&config.lang));
             }
@@ -210,20 +223,17 @@ impl JavaState {
             }
         }
 
-        let mut show_download_button = false;
-        if self.java_download_task.is_some() {
+        if self.status == JavaDownloadStatus::Downloading {
             self.java_download_progress_bar.render(ui, &config.lang);
-        } else if self.status != JavaDownloadStatus::Downloaded {
-            show_download_button = true;
         }
 
-        if show_download_button {
+        if self.is_download_needed() {
             if self
                 .get_download_button_text(selected_index, config)
                 .ui(ui)
                 .clicked()
             {
-                self.status = JavaDownloadStatus::NeedDownload;
+                self.status = JavaDownloadStatus::Downloading;
             }
         }
         if ui

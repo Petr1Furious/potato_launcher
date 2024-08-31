@@ -255,11 +255,17 @@ pub async fn download_java(
         let body = response.text().await?;
         let versions: Value = serde_json::from_str(&body)?;
 
-        if versions.as_array().ok_or_else(|| "No versions array")?.is_empty() {
+        if versions
+            .as_array()
+            .ok_or_else(|| "No versions array")?
+            .is_empty()
+        {
             continue;
         }
 
-        let version_url = versions[0]["download_url"].as_str().ok_or_else(|| "No download URL")?;
+        let version_url = versions[0]["download_url"]
+            .as_str()
+            .ok_or_else(|| "No download URL")?;
         let response = client.get(version_url).send().await?;
 
         let java_download_path = get_temp_dir().join(format!("java_download.{}", archive_type));

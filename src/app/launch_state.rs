@@ -10,14 +10,22 @@ enum LauncherStatus {
     Error(String),
 }
 
-pub struct Launcher {
+pub struct LaunchState {
     status: LauncherStatus,
+    force_launch: bool,
 }
 
-impl Launcher {
+pub enum ForceLaunchResult {
+    NotSelected,
+    ForceLaunchSelected,
+    CancelSelected,
+}
+
+impl LaunchState {
     pub fn new() -> Self {
-        Launcher {
+        LaunchState {
             status: LauncherStatus::NotLaunched,
+            force_launch: false,
         }
     }
 
@@ -52,6 +60,21 @@ impl Launcher {
         }
     }
 
+    fn render_close_launcher_checkbox(
+        &mut self,
+        ui: &mut egui::Ui,
+        config: &mut runtime_config::Config,
+    ) {
+        let old_close_launcher_after_launch = config.close_launcher_after_launch;
+        ui.checkbox(
+            &mut config.close_launcher_after_launch,
+            LangMessage::CloseLauncherAfterLaunch.to_string(&config.lang),
+        );
+        if old_close_launcher_after_launch != config.close_launcher_after_launch {
+            runtime_config::save_config(config);
+        }
+    }
+
     pub fn render_ui(
         &mut self,
         runtime: &Runtime,
@@ -71,21 +94,16 @@ impl Launcher {
                 }
             }
             _ => {
-                if ui
-                    .button(LangMessage::Launch.to_string(&config.lang))
-                    .clicked()
+                if self.force_launch
+                    || ui
+                        .button(LangMessage::Launch.to_string(&config.lang))
+                        .clicked()
                 {
+                    self.force_launch = false;
                     self.launch(runtime, config, selected_modpack.clone(), online);
                 }
 
-                let old_close_launcher_after_launch = config.close_launcher_after_launch;
-                ui.checkbox(
-                    &mut config.close_launcher_after_launch,
-                    LangMessage::CloseLauncherAfterLaunch.to_string(&config.lang),
-                );
-                if old_close_launcher_after_launch != config.close_launcher_after_launch {
-                    runtime_config::save_config(config);
-                }
+                self.render_close_launcher_checkbox(ui, config);
             }
         }
 
@@ -96,8 +114,40 @@ impl Launcher {
             _ => {}
         }
     }
+
+    pub fn render_download_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        config: &mut runtime_config::Config,
+    ) -> ForceLaunchResult {
+        if !self.force_launch {
+            if ui
+                .button(LangMessage::DownloadAndLaunch.to_string(&config.lang))
+                .clicked()
+            {
+                self.force_launch = true;
+                return ForceLaunchResult::ForceLaunchSelected;
+            }
+        } else {
+            let mut cancel_clicked = false;
+            ui.horizontal(|ui| {
+                if ui
+                    .button(LangMessage::CancelLaunch.to_string(&config.lang))
+                    .clicked()
+                {
+                    self.force_launch = false;
+                    cancel_clicked = true;
+                }
+            });
+            self.render_close_launcher_checkbox(ui, config);
+            if cancel_clicked {
+                return ForceLaunchResult::CancelSelected;
+            }
+        }
+        ForceLaunchResult::NotSelected
+    }
 }
 
-impl Drop for Launcher {
+impl Drop for LaunchState {
     fn drop(&mut self) {}
 }

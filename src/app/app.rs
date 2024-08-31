@@ -7,7 +7,8 @@ use super::index_state;
 use super::index_state::IndexState;
 use super::java_state::JavaState;
 use super::language_selector::LanguageSelector;
-use super::launcher::Launcher;
+use super::launch_state::ForceLaunchResult;
+use super::launch_state::LaunchState;
 use super::modpack_sync_state;
 use super::modpack_sync_state::ModpackSyncState;
 use crate::config::build_config;
@@ -23,12 +24,14 @@ pub struct LauncherApp {
     index_state: IndexState,
     java_state: JavaState,
     modpack_sync_state: ModpackSyncState,
-    launcher: Launcher,
+    launch_state: LaunchState,
 }
 
 pub fn run_gui(config: runtime_config::Config) {
     let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size((350.0, 350.0)).with_icon(utils::get_icon_data()),
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size((350.0, 350.0))
+            .with_icon(utils::get_icon_data()),
         ..Default::default()
     };
 
@@ -58,8 +61,8 @@ impl LauncherApp {
             index_state: IndexState::new(),
             java_state: JavaState::new(ctx),
             modpack_sync_state: ModpackSyncState::new(ctx, &config),
+            launch_state: LaunchState::new(),
             config,
-            launcher: Launcher::new(),
         }
     }
 
@@ -82,12 +85,9 @@ impl LauncherApp {
             let render_result = self.index_state.render_ui(ui, &mut self.config);
             let selected_modpack = self.index_state.get_selected_modpack(&self.config).cloned();
             if let Some(selected_modpack) = selected_modpack {
-                let mut need_modpack_check = false;
-                if let index_state::UpdateResult::IndexesUpdated = update_result {
-                    need_modpack_check = true;
-                } else if let index_state::UpdateResult::IndexesUpdated = render_result {
-                    need_modpack_check = true;
-                }
+                let mut need_modpack_check = update_result
+                    == index_state::UpdateResult::IndexesUpdated
+                    || render_result == index_state::UpdateResult::IndexesUpdated;
 
                 let index_online = self.index_state.online();
                 let update_result = self.modpack_sync_state.update(
@@ -114,18 +114,30 @@ impl LauncherApp {
                 self.java_state
                     .render_ui(ui, &mut self.config, &selected_modpack);
 
-                if self.auth_state.ready_for_launch(&self.config)
-                    && self.java_state.ready_for_launch()
-                    && (self.modpack_sync_state.ready_for_launch() || !index_online)
-                {
-                    self.launcher.update();
-                    self.launcher.render_ui(
-                        &self.runtime,
-                        ui,
-                        &mut self.config,
-                        &selected_modpack,
-                        self.auth_state.online(),
-                    );
+                if AuthState::ready_for_launch(&self.config) {
+                    if self.java_state.ready_for_launch()
+                        && (self.modpack_sync_state.ready_for_launch() || !index_online)
+                    {
+                        self.launch_state.update();
+                        self.launch_state.render_ui(
+                            &self.runtime,
+                            ui,
+                            &mut self.config,
+                            &selected_modpack,
+                            self.auth_state.online(),
+                        );
+                    } else {
+                        let force_launch_result =
+                            self.launch_state.render_download_ui(ui, &mut self.config);
+                        match force_launch_result {
+                            ForceLaunchResult::ForceLaunchSelected => {
+                                self.modpack_sync_state.schedule_sync_if_needed();
+                                self.java_state.schedule_download_if_needed();
+                            }
+                            ForceLaunchResult::CancelSelected => {}
+                            ForceLaunchResult::NotSelected => {}
+                        }
+                    }
                 }
             }
 

@@ -13,7 +13,7 @@ use super::task::Task;
 
 #[derive(Clone, PartialEq)]
 enum AuthStatus {
-    NotAuthorized,
+    Authorizing,
     Authorized,
     AuthorizeError(String),
     AuthorizeErrorOffline,
@@ -126,14 +126,14 @@ impl AuthState {
         let auth_message_provider = Arc::new(AuthMessageProvider::new(ctx));
 
         return AuthState {
-            auth_status: AuthStatus::NotAuthorized,
+            auth_status: AuthStatus::Authorizing,
             auth_task: None,
             auth_message_provider,
         };
     }
 
     pub fn update(&mut self, runtime: &Runtime, config: &mut runtime_config::Config) {
-        if self.auth_status == AuthStatus::NotAuthorized && !self.auth_task.is_some() {
+        if self.auth_status == AuthStatus::Authorizing && !self.auth_task.is_some() {
             self.auth_message_provider.clear();
             self.auth_task = Some(authenticate(
                 runtime,
@@ -170,7 +170,7 @@ impl AuthState {
 
     pub fn render_ui(&mut self, ui: &mut egui::Ui, lang: &Lang, config_username: Option<&str>) {
         ui.label(match &self.auth_status {
-            AuthStatus::NotAuthorized => LangMessage::Authorizing.to_string(lang),
+            AuthStatus::Authorizing => LangMessage::Authorizing.to_string(lang),
             AuthStatus::AuthorizeError(e) => LangMessage::AuthError(e.clone()).to_string(lang),
             AuthStatus::AuthorizeErrorOffline => LangMessage::NoConnectionToAuthServer {
                 offline_username: config_username.map(|username| username.to_string()),
@@ -216,14 +216,15 @@ impl AuthState {
             }
         }
 
-        if self.auth_status != AuthStatus::Authorized && self.auth_status != AuthStatus::NotAuthorized {
+        if self.auth_status != AuthStatus::Authorized && self.auth_status != AuthStatus::Authorizing
+        {
             if ui.button(LangMessage::Authorize.to_string(lang)).clicked() {
-                self.auth_status = AuthStatus::NotAuthorized;
+                self.auth_status = AuthStatus::Authorizing;
             }
         }
     }
 
-    pub fn ready_for_launch(&self, config: &runtime_config::Config) -> bool {
+    pub fn ready_for_launch(config: &runtime_config::Config) -> bool {
         config.user_info.is_some()
     }
 

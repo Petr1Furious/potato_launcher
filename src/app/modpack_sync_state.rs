@@ -13,7 +13,7 @@ use super::task::Task;
 #[derive(Clone, PartialEq)]
 enum ModpackSyncStatus {
     NotSynced,
-    NeedSync {
+    Syncing {
         ignore_version: bool,
         force_overwrite: bool,
     },
@@ -127,7 +127,7 @@ impl ModpackSyncState {
             }
         }
 
-        if let ModpackSyncStatus::NeedSync {
+        if let ModpackSyncStatus::Syncing {
             ignore_version,
             force_overwrite,
         } = self.status.clone()
@@ -172,6 +172,24 @@ impl ModpackSyncState {
         UpdateResult::ModpackNotSynced
     }
 
+    pub fn schedule_sync_if_needed(&mut self) {
+        let need_sync = match &self.status {
+            ModpackSyncStatus::NotSynced => true,
+            ModpackSyncStatus::SyncError(_) => true,
+            ModpackSyncStatus::Syncing {
+                ignore_version: _,
+                force_overwrite: _,
+            } => false,
+            ModpackSyncStatus::Synced => false,
+        };
+        if need_sync {
+            self.status = ModpackSyncStatus::Syncing {
+                ignore_version: false,
+                force_overwrite: false,
+            };
+        }
+    }
+
     pub fn render_ui(
         &mut self,
         ui: &mut egui::Ui,
@@ -180,7 +198,7 @@ impl ModpackSyncState {
     ) {
         ui.label(match &self.status {
             ModpackSyncStatus::NotSynced => LangMessage::ModpackNotSynced.to_string(&config.lang),
-            ModpackSyncStatus::NeedSync {
+            ModpackSyncStatus::Syncing {
                 ignore_version: _,
                 force_overwrite: _,
             } => LangMessage::SyncingModpack.to_string(&config.lang),
@@ -198,7 +216,7 @@ impl ModpackSyncState {
             .clicked()
         {
             if self.status == ModpackSyncStatus::NotSynced {
-                self.status = ModpackSyncStatus::NeedSync {
+                self.status = ModpackSyncStatus::Syncing {
                     ignore_version: false,
                     force_overwrite: false,
                 };
@@ -221,7 +239,7 @@ impl ModpackSyncState {
                         .button(LangMessage::SyncModpack.to_string(&config.lang))
                         .clicked()
                     {
-                        self.status = ModpackSyncStatus::NeedSync {
+                        self.status = ModpackSyncStatus::Syncing {
                             ignore_version: true,
                             force_overwrite: self.force_overwrite_checked,
                         };

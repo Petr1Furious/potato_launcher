@@ -10,7 +10,7 @@ use super::task::Task;
 
 #[derive(Clone, PartialEq)]
 enum FetchStatus {
-    NotFetched,
+    Fetching,
     FetchedRemote,
     FetchedLocalRemoteError(String),
     FetchedLocalOffline,
@@ -69,6 +69,7 @@ pub struct IndexState {
     indexes: Option<Vec<ModpackIndex>>,
 }
 
+#[derive(PartialEq)]
 pub enum UpdateResult {
     IndexesNotUpdated,
     IndexesUpdated,
@@ -77,7 +78,7 @@ pub enum UpdateResult {
 impl IndexState {
     pub fn new() -> Self {
         return IndexState {
-            status: FetchStatus::NotFetched,
+            status: FetchStatus::Fetching,
             fetch_task: None,
             indexes: None,
         };
@@ -89,7 +90,7 @@ impl IndexState {
         config: &mut runtime_config::Config,
         ctx: &egui::Context,
     ) -> UpdateResult {
-        if self.status == FetchStatus::NotFetched && self.fetch_task.is_none() {
+        if self.status == FetchStatus::Fetching && self.fetch_task.is_none() {
             let index_path = runtime_config::get_index_path(config);
             let ctx = ctx.clone();
             self.fetch_task = Some(fetch_indexes(runtime, index_path.clone(), move || {
@@ -118,7 +119,7 @@ impl IndexState {
         config: &mut runtime_config::Config,
     ) -> UpdateResult {
         ui.label(match self.status {
-            FetchStatus::NotFetched => LangMessage::FetchingModpackIndexes.to_string(&config.lang),
+            FetchStatus::Fetching => LangMessage::FetchingModpackIndexes.to_string(&config.lang),
             FetchStatus::FetchedRemote => LangMessage::FetchedRemoteIndexes.to_string(&config.lang),
             FetchStatus::FetchedLocalOffline => {
                 LangMessage::NoConnectionToIndexServer.to_string(&config.lang)
@@ -152,12 +153,12 @@ impl IndexState {
                     }
                 });
 
-            if self.status != FetchStatus::FetchedRemote && self.status != FetchStatus::NotFetched {
+            if self.status != FetchStatus::FetchedRemote && self.status != FetchStatus::Fetching {
                 if ui
                     .button(LangMessage::FetchIndexes.to_string(&config.lang))
                     .clicked()
                 {
-                    self.status = FetchStatus::NotFetched;
+                    self.status = FetchStatus::Fetching;
                 }
             }
         });

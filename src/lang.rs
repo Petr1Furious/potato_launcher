@@ -58,6 +58,8 @@ pub enum LangMessage {
     OpenLauncherDirectory,
     KillMinecraft,
     CloseLauncherAfterLaunch,
+    DownloadAndLaunch,
+    CancelLaunch,
 }
 
 impl LangMessage {
@@ -294,6 +296,14 @@ impl LangMessage {
             LangMessage::CloseLauncherAfterLaunch => match lang {
                 Lang::English => "Close launcher after launch".to_string(),
                 Lang::Russian => "Закрыть лаунчер после запуска".to_string(),
+            },
+            LangMessage::DownloadAndLaunch => match lang {
+                Lang::English => "Download and launch".to_string(),
+                Lang::Russian => "Загрузить и запустить".to_string(),
+            },
+            LangMessage::CancelLaunch => match lang {
+                Lang::English => "Cancel launch".to_string(),
+                Lang::Russian => "Отменить запуск".to_string(),
             },
         }
     }
