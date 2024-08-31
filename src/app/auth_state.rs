@@ -216,7 +216,7 @@ impl AuthState {
             }
         }
 
-        if self.auth_status != AuthStatus::Authorized {
+        if self.auth_status != AuthStatus::Authorized && self.auth_status != AuthStatus::NotAuthorized {
             if ui.button(LangMessage::Authorize.to_string(lang)).clicked() {
                 self.auth_status = AuthStatus::NotAuthorized;
             }

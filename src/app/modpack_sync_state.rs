@@ -34,6 +34,8 @@ fn sync_modpack(
     index_path: &Path,
     progress_bar: Arc<dyn ProgressBar>,
 ) -> Task<ModpackSyncResult> {
+    progress_bar.set_message(LangMessage::CheckingFiles);
+
     let (tx, rx) = mpsc::channel();
 
     let modpack_index = modpack_index.clone();

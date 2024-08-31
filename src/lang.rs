@@ -34,6 +34,7 @@ pub enum LangMessage {
     JavaInstalled { version: String },
     NeedJava { version: String },
     ErrorDownloadingJava(String),
+    NoConnectionToJavaServer,
     JavaSettings,
     SelectedJavaPath { path: Option<String> },
     JavaXMX,
@@ -179,6 +180,10 @@ impl LangMessage {
                 Lang::English => format!("Error downloading Java: {}", e),
                 Lang::Russian => format!("Ошибка загрузки Java: {}", e),
             },
+            LangMessage::NoConnectionToJavaServer => match lang {
+                Lang::English => "No connection to the Java download server".to_string(),
+                Lang::Russian => "Нет подключения к серверу загрузки Java".to_string(),
+            },
             LangMessage::JavaSettings => match lang {
                 Lang::English => "Java Settings".to_string(),
                 Lang::Russian => "Настройки Java".to_string(),
@@ -186,11 +191,11 @@ impl LangMessage {
             LangMessage::SelectedJavaPath { path } => match lang {
                 Lang::English => format!(
                     "Selected Java path:\n{}",
-                    path.as_ref().unwrap_or(&"Error".to_string())
+                    path.as_ref().unwrap_or(&"Path not selected".to_string())
                 ),
                 Lang::Russian => format!(
                     "Выбранный путь к Java:\n{}",
-                    path.as_ref().unwrap_or(&"Ошибка".to_string())
+                    path.as_ref().unwrap_or(&"Путь не выбран".to_string())
                 ),
             },
             LangMessage::JavaXMX => match lang {

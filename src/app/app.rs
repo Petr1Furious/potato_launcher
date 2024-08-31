@@ -28,7 +28,7 @@ pub struct LauncherApp {
 
 pub fn run_gui(config: runtime_config::Config) {
     let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size((300.0, 300.0)).with_icon(utils::get_icon_data()),
+        viewport: egui::ViewportBuilder::default().with_inner_size((350.0, 350.0)).with_icon(utils::get_icon_data()),
         ..Default::default()
     };
 

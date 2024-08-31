@@ -28,6 +28,13 @@ pub fn is_read_only_error(e: &Box<dyn Error>) -> bool {
     false
 }
 
+pub fn is_connect_error(e: &Box<dyn Error>) -> bool {
+    if let Some(e) = e.downcast_ref::<reqwest::Error>() {
+        return e.is_connect();
+    }
+    false
+}
+
 pub fn validate_xmx(xmx: &str) -> bool {
     let xmx = xmx.trim();
     if xmx.is_empty() {

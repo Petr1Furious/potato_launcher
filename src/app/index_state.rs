@@ -152,7 +152,7 @@ impl IndexState {
                     }
                 });
 
-            if self.status != FetchStatus::FetchedRemote && self.fetch_task.is_none() {
+            if self.status != FetchStatus::FetchedRemote && self.status != FetchStatus::NotFetched {
                 if ui
                     .button(LangMessage::FetchIndexes.to_string(&config.lang))
                     .clicked()

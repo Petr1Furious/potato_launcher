@@ -98,7 +98,6 @@ pub async fn sync_modpack(
     // e.g. config folder is in no_overwrite but config/<filename>.json is in overwrite
     abs_path_no_overwrite.retain(|x| !abs_path_overwrite.contains(x));
 
-    progress_bar.set_message(LangMessage::CheckingFiles);
     let abs_path_overwrite_hashes = super::files::hash_files(
         abs_path_overwrite.clone().into_iter(),
         Arc::clone(&progress_bar),

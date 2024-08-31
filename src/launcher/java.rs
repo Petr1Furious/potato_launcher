@@ -16,7 +16,6 @@ use winreg::enums::*;
 #[cfg(target_os = "windows")]
 use winreg::RegKey;
 
-use crate::lang::LangMessage;
 use crate::progress::ProgressBar;
 use crate::utils::get_temp_dir;
 
@@ -268,7 +267,6 @@ pub async fn download_java(
 
         let total_size = response.content_length().unwrap_or(0);
         progress_bar.set_length(total_size);
-        progress_bar.set_message(LangMessage::DownloadingJava);
 
         let mut stream = response.bytes_stream();
         while let Some(chunk) = stream.next().await {

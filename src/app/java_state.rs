@@ -19,6 +19,7 @@ pub enum JavaDownloadStatus {
     NeedDownload,
     Downloaded,
     DownloadError(String),
+    DownloadErrorOffline,
 }
 
 pub struct JavaDownloadResult {
@@ -32,6 +33,8 @@ pub fn download_java(
     java_dir: &Path,
     progress_bar: Arc<dyn ProgressBar>,
 ) -> Task<JavaDownloadResult> {
+    progress_bar.set_message(LangMessage::DownloadingJava);
+
     let (tx, rx) = mpsc::channel();
 
     let required_version = required_version.to_string();
@@ -45,7 +48,11 @@ pub fn download_java(
                     java_installation: Some(java_installation),
                 },
                 Err(e) => JavaDownloadResult {
-                    status: JavaDownloadStatus::DownloadError(e.to_string()),
+                    status: if utils::is_connect_error(&e) {
+                        JavaDownloadStatus::DownloadErrorOffline
+                    } else {
+                        JavaDownloadStatus::DownloadError(e.to_string())
+                    },
                     java_installation: None,
                 },
             };
@@ -189,6 +196,9 @@ impl JavaState {
             JavaDownloadStatus::NeedDownload => {} // message is shown in progress bar
             JavaDownloadStatus::DownloadError(ref e) => {
                 ui.label(LangMessage::ErrorDownloadingJava(e.clone()).to_string(&config.lang));
+            }
+            JavaDownloadStatus::DownloadErrorOffline => {
+                ui.label(LangMessage::NoConnectionToJavaServer.to_string(&config.lang));
             }
             JavaDownloadStatus::Downloaded => {
                 ui.label(
