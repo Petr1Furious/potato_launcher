@@ -1,45 +1,7 @@
-[package]
-name = "potato_launcher"
-version = "0.1.0"
-edition = "2021"
-build = "build.rs"
-
-[dependencies]
-ctrlc = "3.4.4"
-dirs = "5.0.1"
-eframe = "0.28.1"
-egui = "0.28.1"
-egui_extras = { version = "0.28.1", features = ["image"] }
-flate2 = "1.0.30"
-futures = "0.3.30"
-image = { version = "0.25.2", features = ["png"] }
-lazy_static = "1.5.0"
-maplit = "1.0.2"
-num_cpus = "1.16.0"
-open = "5.3.0"
-qrcode = "0.14.1"
-regex = "1.10.5"
-reqwest = { version = "0.12.5", features = ["rustls-tls", "json", "stream"], default-features = false }
-rfd = "0.14.1"
-self-replace = "1.4.0"
-serde = { version = "1.0.204", features = ["derive"] }
-serde_json = "1.0.120"
-sha1 = "0.10.6"
-tar = "0.4.41"
-tokio = { version = "1.39.1", features = ["full"] }
-tokio-util = "0.7.12"
-warp = "0.3.7"
-which = "6.0.2"
-zip = "2.2.0"
-
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3.9", features = ["fileapi", "winbase"] }
-winreg = "0.52.0"
-
-[build-dependencies]
-winres = "0.1.12"
-
-[package.metadata.bundle]
-name = "Potato Launcher"
-identifier = "com.petr1furious.potato_launcher"
-icon = ["assets/icon.icns"]
+[workspace]
+members = [
+    "launcher",
+    "modpack_builder",
+    "shared"
+]
+resolver = "2"
