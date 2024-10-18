@@ -135,7 +135,7 @@ impl VersionGenerator for FabricGenerator {
             save_version_metadata(&versions_dir, &fabric_metadata).await?;
         }
 
-        info!("Fabric version \"{}\" generated", self.version_name);
+        info!("Version \"{}\" generated", self.version_name);
 
         Ok(GeneratorResult {
             id: fabric_metadata.id.clone(),
