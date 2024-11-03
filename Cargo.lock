@@ -2380,6 +2380,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "instance_builder"
+version = "1.0.0"
+dependencies = [
+ "clap",
+ "env_logger",
+ "indicatif",
+ "log",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "shared",
+ "thiserror",
+ "tokio",
+ "winapi",
+ "winreg",
+]
+
+[[package]]
 name = "instant"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2812,26 +2830,6 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "modpack_builder"
-version = "1.0.0"
-dependencies = [
- "async-trait",
- "clap",
- "env_logger",
- "indicatif",
- "log",
- "reqwest",
- "serde",
- "serde-xml-rs",
- "serde_json",
- "shared",
- "thiserror",
- "tokio",
- "winapi",
- "winreg",
 ]
 
 [[package]]
@@ -4064,6 +4062,7 @@ dependencies = [
 name = "shared"
 version = "1.0.0"
 dependencies = [
+ "async-trait",
  "dirs",
  "env_logger",
  "flate2",
@@ -4075,6 +4074,7 @@ dependencies = [
  "regex",
  "reqwest",
  "serde",
+ "serde-xml-rs",
  "serde_json",
  "sha1",
  "tar",

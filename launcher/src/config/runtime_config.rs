@@ -19,7 +19,7 @@ pub struct Config {
     pub assets_dir: Option<String>,
     pub data_dir: Option<String>,
     pub xmx: String,
-    pub selected_modpack_name: Option<String>,
+    pub selected_instance_name: Option<String>,
     pub lang: Lang,
     pub close_launcher_after_launch: bool,
 }
@@ -57,7 +57,7 @@ impl Config {
             assets_dir: None,
             data_dir: None,
             xmx: String::from(constants::DEFAULT_JAVA_XMX),
-            selected_modpack_name: None,
+            selected_instance_name: None,
             lang: constants::DEFAULT_LANG,
             close_launcher_after_launch: true,
         };

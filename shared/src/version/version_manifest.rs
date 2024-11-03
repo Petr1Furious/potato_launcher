@@ -66,6 +66,12 @@ pub struct VersionManifest {
 }
 
 impl VersionManifest {
+    pub fn empty() -> Self {
+        Self {
+            versions: Vec::new(),
+        }
+    }
+
     pub async fn fetch(url: &str) -> BoxResult<Self> {
         let client = Client::new();
         let res = client
@@ -97,5 +103,20 @@ impl VersionManifest {
         let manifest_str = serde_json::to_string(self)?;
         tokio::fs::write(manifest_path, manifest_str).await?;
         Ok(())
+    }
+
+    pub fn is_up_to_date(&self, version_info: &VersionInfo) -> bool {
+        self.versions.iter().find(|i| i == &version_info).is_some()
+    }
+
+    pub async fn add_version_and_save(
+        &mut self,
+        version_info: VersionInfo,
+        manifest_path: &Path,
+    ) -> BoxResult<()> {
+        self.versions
+            .retain(|i| i.get_name() != version_info.get_name());
+        self.versions.push(version_info);
+        self.save_to_file(manifest_path).await
     }
 }

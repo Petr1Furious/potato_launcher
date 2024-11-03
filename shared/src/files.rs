@@ -275,7 +275,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_sync_mapping() {
-        let temp_dir = env::temp_dir().join("modpack_builder_test");
+        let temp_dir = env::temp_dir().join("instance_builder_test");
         let source_dir = temp_dir.join("source");
         let target_dir = temp_dir.join("target");
         let file1 = source_dir.join("file1");

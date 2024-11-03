@@ -121,7 +121,7 @@ impl AuthState {
         false
     }
 
-    fn render_auth_window(auth_message: LangMessage, lang: &Lang, ui: &mut egui::Ui) {
+    fn render_auth_window(auth_message: LangMessage, lang: Lang, ui: &mut egui::Ui) {
         egui::Window::new(LangMessage::Authorization.to_string(lang)).show(ui.ctx(), |ui| {
             ui.label(auth_message.to_string(lang));
             let url = match auth_message {
@@ -175,7 +175,7 @@ impl AuthState {
         ctx: &egui::Context,
         auth_data: &AuthData,
     ) {
-        let lang = &config.lang;
+        let lang = config.lang;
         let version_auth_data = config.get_version_auth_data(auth_data);
         let selected_username = version_auth_data.map(|x| x.user_info.username.clone());
         let selected_token = version_auth_data.map(|x| x.token.clone());

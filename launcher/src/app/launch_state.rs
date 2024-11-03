@@ -37,10 +37,10 @@ impl LaunchState {
         &mut self,
         runtime: &Runtime,
         config: &runtime_config::Config,
-        selected_modpack: &CompleteVersionMetadata,
+        selected_instance: &CompleteVersionMetadata,
         online: bool,
     ) {
-        match runtime.block_on(launch::launch(selected_modpack, config, online)) {
+        match runtime.block_on(launch::launch(selected_instance, config, online)) {
             Ok(child) => {
                 if config.close_launcher_after_launch {
                     std::process::exit(0);
@@ -87,14 +87,14 @@ impl LaunchState {
         runtime: &Runtime,
         ui: &mut egui::Ui,
         config: &mut runtime_config::Config,
-        selected_modpack: &CompleteVersionMetadata,
+        selected_instance: &CompleteVersionMetadata,
         online: bool,
     ) {
         match &mut self.status {
             LauncherStatus::Running { child } => {
-                ui.label(LangMessage::Running.to_string(&config.lang));
+                ui.label(LangMessage::Running.to_string(config.lang));
                 if ui
-                    .button(LangMessage::KillMinecraft.to_string(&config.lang))
+                    .button(LangMessage::KillMinecraft.to_string(config.lang))
                     .clicked()
                 {
                     let _ = runtime.block_on(child.kill());
@@ -104,23 +104,23 @@ impl LaunchState {
                 if self.force_launch
                     || LaunchState::big_button_clicked(
                         ui,
-                        &LangMessage::Launch.to_string(&config.lang),
+                        &LangMessage::Launch.to_string(config.lang),
                     )
                 {
                     self.force_launch = false;
-                    self.launch(runtime, config, selected_modpack, online);
+                    self.launch(runtime, config, selected_instance, online);
                 }
             }
         }
 
         match &self.status {
             LauncherStatus::Error(e) => {
-                ui.label(LangMessage::LaunchError(e.clone()).to_string(&config.lang));
+                ui.label(LangMessage::LaunchError(e.clone()).to_string(config.lang));
             }
             LauncherStatus::ProcessErrorCode(e) => {
-                ui.label(LangMessage::ProcessErrorCode(e.clone()).to_string(&config.lang));
+                ui.label(LangMessage::ProcessErrorCode(e.clone()).to_string(config.lang));
                 if ui
-                    .button(LangMessage::OpenLogs.to_string(&config.lang))
+                    .button(LangMessage::OpenLogs.to_string(config.lang))
                     .clicked()
                 {
                     open::that(get_logs_dir(&config.get_launcher_dir())).unwrap();
@@ -138,7 +138,7 @@ impl LaunchState {
         if !self.force_launch {
             if LaunchState::big_button_clicked(
                 ui,
-                &LangMessage::DownloadAndLaunch.to_string(&config.lang),
+                &LangMessage::DownloadAndLaunch.to_string(config.lang),
             ) {
                 self.force_launch = true;
                 return ForceLaunchResult::ForceLaunchSelected;
@@ -147,7 +147,7 @@ impl LaunchState {
             let mut cancel_clicked = false;
             if LaunchState::big_button_clicked(
                 ui,
-                &LangMessage::CancelLaunch.to_string(&config.lang),
+                &LangMessage::CancelLaunch.to_string(config.lang),
             ) {
                 self.force_launch = false;
                 cancel_clicked = true;

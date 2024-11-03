@@ -81,7 +81,7 @@ impl ProgressBar<LangMessage> for GuiProgressBar {
 }
 
 impl GuiProgressBar {
-    pub fn render(&self, ui: &mut egui::Ui, lang: &Lang) {
+    pub fn render(&self, ui: &mut egui::Ui, lang: Lang) {
         let progress_bar_state = self.get_state();
         if let Some(message) = &progress_bar_state.message {
             ui.label(message.to_string(lang));

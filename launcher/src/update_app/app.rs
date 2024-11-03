@@ -64,12 +64,11 @@ pub fn run_gui(config: &runtime_config::Config) {
         ..Default::default()
     };
 
-    let lang = config.lang.clone();
-
+    let lang = config.lang;
     run_native(
         &format!("{} Updater", build_config::get_launcher_name()),
         native_options,
-        Box::new(|cc| Ok(Box::new(UpdateApp::new(lang, &cc.egui_ctx)))),
+        Box::new(move |cc| Ok(Box::new(UpdateApp::new(lang, &cc.egui_ctx)))),
     )
     .unwrap();
 }
@@ -124,7 +123,7 @@ impl UpdateApp {
 
     fn render_close_button(&mut self, ui: &mut egui::Ui) {
         if ui
-            .button(LangMessage::ProceedToLauncher.to_string(&self.lang))
+            .button(LangMessage::ProceedToLauncher.to_string(self.lang))
             .clicked()
         {
             self.exit_on_close = false;
@@ -154,7 +153,7 @@ impl UpdateApp {
                     if let Ok(download_status) = new_binary_receiver.try_recv() {
                         match &download_status {
                             DownloadStatus::Downloaded(_) => {
-                                ui.label(LangMessage::Launching.to_string(&self.lang));
+                                ui.label(LangMessage::Launching.to_string(self.lang));
                             }
                             DownloadStatus::DownloadError(_) => {}
                             DownloadStatus::DownloadErrorOffline(_) => {}
@@ -207,29 +206,29 @@ impl UpdateApp {
 
                 match &self.update_status {
                     UpdateStatus::Checking => {
-                        ui.label(LangMessage::CheckingForUpdates.to_string(&self.lang));
+                        ui.label(LangMessage::CheckingForUpdates.to_string(self.lang));
                     }
                     UpdateStatus::NeedUpdate => match &self.download_status {
                         DownloadStatus::NeedDownloading => {
-                            self.update_progress_bar.render(ui, &self.lang);
+                            self.update_progress_bar.render(ui, self.lang);
                         }
                         DownloadStatus::DownloadError(e) => {
                             ui.label(
                                 LangMessage::ErrorDownloadingUpdate(e.to_string())
-                                    .to_string(&self.lang),
+                                    .to_string(self.lang),
                             );
                             self.render_close_button(ui);
                         }
                         DownloadStatus::DownloadErrorOffline(e) => {
                             ui.label(
                                 LangMessage::NoConnectionToUpdateServer(e.to_string())
-                                    .to_string(&self.lang),
+                                    .to_string(self.lang),
                             );
                             self.render_close_button(ui);
                         }
                         DownloadStatus::Downloaded(_) => {}
                         DownloadStatus::ErrorReadOnly => {
-                            ui.label(LangMessage::ErrorReadOnly.to_string(&self.lang));
+                            ui.label(LangMessage::ErrorReadOnly.to_string(self.lang));
                             self.render_close_button(ui);
                         }
                     },
@@ -237,14 +236,14 @@ impl UpdateApp {
                     UpdateStatus::UpdateError(e) => {
                         ui.label(
                             LangMessage::ErrorCheckingForUpdates(e.to_string())
-                                .to_string(&self.lang),
+                                .to_string(self.lang),
                         );
                         self.render_close_button(ui);
                     }
                     UpdateStatus::UpdateErrorOffline(e) => {
                         ui.label(
                             LangMessage::NoConnectionToUpdateServer(e.to_string())
-                                .to_string(&self.lang),
+                                .to_string(self.lang),
                         );
                         self.render_close_button(ui);
                     }

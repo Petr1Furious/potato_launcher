@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use crate::{utils::BoxResult, version::version_metadata::VersionMetadata};
 use async_trait::async_trait;
-use shared::{utils::BoxResult, version::version_metadata::VersionMetadata};
 
 pub struct GeneratorResult {
     // ordered from parent to child

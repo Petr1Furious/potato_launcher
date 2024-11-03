@@ -34,6 +34,18 @@ pub enum VersionMetadataError {
 }
 
 impl CompleteVersionMetadata {
+    pub fn from_parts(
+        version_name: String,
+        base: Vec<VersionMetadata>,
+        extra: Option<ExtraVersionMetadata>,
+    ) -> Self {
+        Self {
+            version_name,
+            base,
+            extra,
+        }
+    }
+
     pub async fn read_local(version_info: &VersionInfo, data_dir: &Path) -> BoxResult<Self> {
         let versions_dir = get_versions_dir(data_dir);
 

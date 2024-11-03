@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 
-use crate::config::runtime_config;
+use crate::config::runtime_config::Config;
 use crate::lang::{Lang, LangMessage};
 use crate::utils;
 use crate::version::complete_version_metadata::CompleteVersionMetadata;
@@ -133,7 +133,7 @@ impl JavaState {
         &mut self,
         runtime: &Runtime,
         metadata: &CompleteVersionMetadata,
-        config: &mut runtime_config::Config,
+        config: &mut Config,
     ) {
         let launcher_dir = config.get_launcher_dir();
         let java_dir = get_java_dir(&launcher_dir);
@@ -148,33 +148,32 @@ impl JavaState {
         ));
     }
 
-    pub fn update(
+    pub fn set_check_java_task(
         &mut self,
         runtime: &Runtime,
         metadata: &CompleteVersionMetadata,
-        config: &mut runtime_config::Config,
+        config: &Config,
         ctx: &egui::Context,
-        need_java_check: bool,
     ) {
-        if need_java_check {
-            self.status = JavaDownloadStatus::CheckingJava;
-            let launcher_dir = config.get_launcher_dir();
-            let java_dir = get_java_dir(&launcher_dir);
+        self.status = JavaDownloadStatus::CheckingJava;
+        let launcher_dir = config.get_launcher_dir();
+        let java_dir = get_java_dir(&launcher_dir);
 
-            self.check_java_task = Some(check_java(
-                runtime,
-                &metadata.get_java_version(),
-                &java_dir,
-                config
-                    .java_paths
-                    .get(metadata.get_name())
-                    .map(|s| s.as_str()),
-                ctx,
-            ));
+        self.check_java_task = Some(check_java(
+            runtime,
+            &metadata.get_java_version(),
+            &java_dir,
+            config
+                .java_paths
+                .get(metadata.get_name())
+                .map(|s| s.as_str()),
+            ctx,
+        ));
 
-            self.settings_opened = false;
-        }
+        self.settings_opened = false;
+    }
 
+    pub fn update(&mut self, metadata: &CompleteVersionMetadata, config: &mut Config) {
         if let Some(task) = self.check_java_task.as_ref() {
             if task.has_result() {
                 let task = self.check_java_task.take().unwrap();
@@ -245,7 +244,7 @@ impl JavaState {
         &mut self,
         runtime: &Runtime,
         metadata: &CompleteVersionMetadata,
-        config: &mut runtime_config::Config,
+        config: &mut Config,
     ) {
         if self.is_download_needed() {
             self.schedule_download(runtime, metadata, config);
@@ -255,12 +254,12 @@ impl JavaState {
     pub fn render_ui(
         &mut self,
         ui: &mut egui::Ui,
-        config: &mut runtime_config::Config,
+        config: &mut Config,
         selected_metadata: &CompleteVersionMetadata,
     ) {
         match self.status {
             JavaDownloadStatus::CheckingJava => {
-                ui.label(LangMessage::CheckingJava.to_string(&config.lang));
+                ui.label(LangMessage::CheckingJava.to_string(config.lang));
             }
             JavaDownloadStatus::NotDownloaded => {
                 if self.java_download_task.is_none() {
@@ -268,29 +267,29 @@ impl JavaState {
                         LangMessage::NeedJava {
                             version: selected_metadata.get_java_version().clone(),
                         }
-                        .to_string(&config.lang),
+                        .to_string(config.lang),
                     );
                 }
             }
             JavaDownloadStatus::DownloadError(ref e) => {
-                ui.label(LangMessage::ErrorDownloadingJava(e.clone()).to_string(&config.lang));
+                ui.label(LangMessage::ErrorDownloadingJava(e.clone()).to_string(config.lang));
             }
             JavaDownloadStatus::DownloadErrorOffline => {
-                ui.label(LangMessage::NoConnectionToJavaServer.to_string(&config.lang));
+                ui.label(LangMessage::NoConnectionToJavaServer.to_string(config.lang));
             }
             JavaDownloadStatus::Downloaded => {
                 ui.label(
                     LangMessage::JavaInstalled {
                         version: selected_metadata.get_java_version().clone(),
                     }
-                    .to_string(&config.lang),
+                    .to_string(config.lang),
                 );
             }
         }
 
         if self.java_download_task.is_some() {
-            self.java_download_progress_bar.render(ui, &config.lang);
-            self.render_cancel_button(ui, &config.lang);
+            self.java_download_progress_bar.render(ui, config.lang);
+            self.render_cancel_button(ui, config.lang);
         }
     }
 
@@ -298,7 +297,7 @@ impl JavaState {
         self.status == JavaDownloadStatus::Downloaded
     }
 
-    fn render_cancel_button(&mut self, ui: &mut egui::Ui, lang: &Lang) {
+    fn render_cancel_button(&mut self, ui: &mut egui::Ui, lang: Lang) {
         if ui
             .button(LangMessage::CancelDownload.to_string(lang))
             .clicked()

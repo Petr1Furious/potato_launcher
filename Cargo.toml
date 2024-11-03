@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "launcher",
-    "modpack_builder",
+    "instance_builder",
     "shared"
 ]
 resolver = "2"

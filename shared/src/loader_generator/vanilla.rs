@@ -1,12 +1,12 @@
 use std::path::Path;
 
-use async_trait::async_trait;
-use log::info;
-use shared::{
+use crate::{
     paths::get_versions_dir,
     utils::BoxResult,
     version::{version_manifest::VersionInfo, version_metadata::VersionMetadata},
 };
+use async_trait::async_trait;
+use log::info;
 
 use super::generator::{GeneratorResult, VersionGenerator};
 

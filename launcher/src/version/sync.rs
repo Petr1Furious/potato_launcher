@@ -34,14 +34,14 @@ fn get_objects_entries(
     let include = &extra_version_metadata.include;
     let include_no_overwrite = &extra_version_metadata.include_no_overwrite;
 
-    let get_modpack_files = |x| files::get_files_in_dir(&instance_dir.join(x)).ok();
+    let get_instance_files = |x| files::get_files_in_dir(&instance_dir.join(x)).ok();
     let no_overwrite_iter = include_no_overwrite
         .iter()
-        .filter_map(get_modpack_files)
+        .filter_map(get_instance_files)
         .flatten();
     let mut to_overwrite: HashSet<PathBuf> = include
         .iter()
-        .filter_map(get_modpack_files)
+        .filter_map(get_instance_files)
         .flatten()
         .collect();
     let mut no_overwrite = HashSet::new();
@@ -225,7 +225,7 @@ fn get_authlib_injector_entry(
     None
 }
 
-pub async fn sync_modpack(
+pub async fn sync_instance(
     version_metadata: &CompleteVersionMetadata,
     force_overwrite: bool,
     launcher_dir: &Path,
@@ -267,10 +267,6 @@ pub async fn sync_modpack(
 
     info!("Got {} download entries", download_entries.len());
 
-    let libraries_changed = download_entries
-        .iter()
-        .any(|entry| entry.path.starts_with(&libraries_dir));
-
     let paths = download_entries
         .iter()
         .map(|x| x.path.clone())
@@ -280,9 +276,7 @@ pub async fn sync_modpack(
     progress_bar.set_message(LangMessage::DownloadingFiles);
     files::download_files(download_entries, progress_bar).await?;
 
-    if libraries_changed {
-        extract_natives(&libraries, &libraries_dir, &natives_dir)?;
-    }
+    extract_natives(&libraries, &libraries_dir, &natives_dir)?;
 
     Ok(())
 }

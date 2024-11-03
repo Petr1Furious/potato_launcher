@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
 pub enum Lang {
     English,
     Russian,
@@ -20,20 +20,20 @@ pub enum LangMessage {
     NoConnectionToManifestServer,
     ErrorFetchingRemoteManifest(String),
     FetchManifest,
-    SelectModpack,
+    SelectInstance,
     NotSelected,
-    NoModpacks,
+    NoInstances,
     GettingVersionMetadata,
     NoConnectionToMetadataServer,
     ErrorGettingRemoteMetadata(String),
     ErrorGettingMetadata(String),
     CheckingFiles,
     DownloadingFiles,
-    SyncModpack,
-    ModpackNotSynced,
-    ModpackSynced,
+    SyncInstance,
+    InstanceNotSynced,
+    InstanceSynced,
     NoConnectionToSyncServer,
-    ModpackSyncError(String),
+    InstanceSyncError(String),
     CheckingJava,
     DownloadingJava,
     JavaInstalled { version: String },
@@ -68,10 +68,24 @@ pub enum LangMessage {
     CancelDownload,
     Retry,
     OpenLogs,
+    LoadingMetadata,
+    MetadataErrorOffline,
+    MetadataFetchError(String),
+    NewInstance,
+    NewInstanceName,
+    GameVersion,
+    Loader,
+    LoaderVersion,
+    InstanceNameExists,
+    CreateInstance,
+    CreatingInstance,
+    Cancel,
+    InstanceGenerateErrorOffline,
+    InstanceGenerateError(String),
 }
 
 impl LangMessage {
-    pub fn to_string(&self, lang: &Lang) -> String {
+    pub fn to_string(&self, lang: Lang) -> String {
         match self {
             LangMessage::AuthMessage { url: _ } => match lang {
                 Lang::English => {
@@ -119,32 +133,32 @@ impl LangMessage {
                 Lang::Russian => "Авторизоваться".to_string(),
             },
             LangMessage::FetchingVersionManifest => match lang {
-                Lang::English => "Fetching modpack list...".to_string(),
-                Lang::Russian => "Получение списка модпаков...".to_string(),
+                Lang::English => "Fetching instance list...".to_string(),
+                Lang::Russian => "Получение списка версий...".to_string(),
             },
             LangMessage::NoConnectionToManifestServer => match lang {
-                Lang::English => "Error: no connection to the modpack server".to_string(),
-                Lang::Russian => "Ошибка: нет подключения к серверу модпаков".to_string(),
+                Lang::English => "Error: no connection to the instance server".to_string(),
+                Lang::Russian => "Ошибка: нет подключения к серверу версий".to_string(),
             },
             LangMessage::ErrorFetchingRemoteManifest(s) => match lang {
-                Lang::English => format!("Error fetching remote modpack list: {}", s),
-                Lang::Russian => format!("Ошибка получения списка модпаков с сервера: {}", s),
+                Lang::English => format!("Error fetching remote instance list: {}", s),
+                Lang::Russian => format!("Ошибка получения списка версий с сервера: {}", s),
             },
             LangMessage::FetchManifest => match lang {
-                Lang::English => "Fetch modpack list".to_string(),
-                Lang::Russian => "Получить список модпаков".to_string(),
+                Lang::English => "Fetch version list".to_string(),
+                Lang::Russian => "Получить список версий".to_string(),
             },
-            LangMessage::SelectModpack => match lang {
-                Lang::English => "Select modpack:".to_string(),
-                Lang::Russian => "Выберите модпак:".to_string(),
+            LangMessage::SelectInstance => match lang {
+                Lang::English => "Select instance:".to_string(),
+                Lang::Russian => "Выберите версию:".to_string(),
             },
             LangMessage::NotSelected => match lang {
                 Lang::English => "Not selected".to_string(),
-                Lang::Russian => "Не выбран".to_string(),
+                Lang::Russian => "Не выбрано".to_string(),
             },
-            LangMessage::NoModpacks => match lang {
-                Lang::English => "No modpacks fetched".to_string(),
-                Lang::Russian => "Список модпаков пуст".to_string(),
+            LangMessage::NoInstances => match lang {
+                Lang::English => "No instances fetched".to_string(),
+                Lang::Russian => "Список версий пуст".to_string(),
             },
             LangMessage::GettingVersionMetadata => match lang {
                 Lang::English => "Getting version metadata...".to_string(),
@@ -170,25 +184,25 @@ impl LangMessage {
                 Lang::English => "Downloading files...".to_string(),
                 Lang::Russian => "Загрузка файлов...".to_string(),
             },
-            LangMessage::SyncModpack => match lang {
-                Lang::English => "Sync modpack".to_string(),
-                Lang::Russian => "Синхронизировать модпак".to_string(),
+            LangMessage::SyncInstance => match lang {
+                Lang::English => "Sync instance".to_string(),
+                Lang::Russian => "Синхронизировать версию".to_string(),
             },
-            LangMessage::ModpackNotSynced => match lang {
-                Lang::English => "Modpack not synced".to_string(),
-                Lang::Russian => "Модпак не синхронизирован".to_string(),
+            LangMessage::InstanceNotSynced => match lang {
+                Lang::English => "Instance not synced".to_string(),
+                Lang::Russian => "Версия не синхронизирована".to_string(),
             },
-            LangMessage::ModpackSynced => match lang {
-                Lang::English => "Modpack up-to-date".to_string(),
-                Lang::Russian => "Модпак синхронизирован".to_string(),
+            LangMessage::InstanceSynced => match lang {
+                Lang::English => "Instance up-to-date".to_string(),
+                Lang::Russian => "Версия синхронизирована".to_string(),
             },
             LangMessage::NoConnectionToSyncServer => match lang {
-                Lang::English => "Error: no connection to the modpack sync server".to_string(),
-                Lang::Russian => "Ошибка: нет подключения к серверу синхронизации модпаков".to_string(),
+                Lang::English => "Error: no connection to the instance sync server".to_string(),
+                Lang::Russian => "Ошибка: нет подключения к серверу синхронизации версий".to_string(),
             },
-            LangMessage::ModpackSyncError(e) => match lang {
-                Lang::English => format!("Error syncing modpack: {}", e),
-                Lang::Russian => format!("Ошибка синхронизации модпака: {}", e),
+            LangMessage::InstanceSyncError(e) => match lang {
+                Lang::English => format!("Error syncing instance: {}", e),
+                Lang::Russian => format!("Ошибка синхронизации версии: {}", e),
             },
             LangMessage::CheckingJava => match lang {
                 Lang::English => "Checking Java...".to_string(),
@@ -338,7 +352,63 @@ impl LangMessage {
             LangMessage::OpenLogs => match lang {
                 Lang::English => "Open logs folder".to_string(),
                 Lang::Russian => "Открыть папку с логами".to_string(),
-            }
+            },
+            LangMessage::LoadingMetadata => match lang {
+                Lang::English => "Loading metadata...".to_string(),
+                Lang::Russian => "Загрузка метаданных...".to_string(),
+            },
+            LangMessage::MetadataErrorOffline => match lang {
+                Lang::English => "Error fetching metadata: no connection".to_string(),
+                Lang::Russian => "Ошибка получения метаданных: нет подключения".to_string(),
+            },
+            LangMessage::MetadataFetchError(e) => match lang {
+                Lang::English => format!("Error fetching metadata: {}", e),
+                Lang::Russian => format!("Ошибка получения метаданных: {}", e),
+            },
+            LangMessage::NewInstance => match lang {
+                Lang::English => "New instance".to_string(),
+                Lang::Russian => "Новая версия".to_string(),
+            },
+            LangMessage::NewInstanceName => match lang {
+                Lang::English => "New instance name".to_string(),
+                Lang::Russian => "Название новой версии".to_string(),
+            },
+            LangMessage::GameVersion => match lang {
+                Lang::English => "Game version".to_string(),
+                Lang::Russian => "Версия игры".to_string(),
+            },
+            LangMessage::Loader => match lang {
+                Lang::English => "Loader".to_string(),
+                Lang::Russian => "Лоадер".to_string(),
+            },
+            LangMessage::LoaderVersion => match lang {
+                Lang::English => "Loader version".to_string(),
+                Lang::Russian => "Версия лоадера".to_string(),
+            },
+            LangMessage::InstanceNameExists => match lang {
+                Lang::English => "Instance name already exists".to_string(),
+                Lang::Russian => "Версия с таким именем уже существует".to_string(),
+            },
+            LangMessage::CreateInstance => match lang {
+                Lang::English => "Create instance".to_string(),
+                Lang::Russian => "Создать версию".to_string(),
+            },
+            LangMessage::CreatingInstance => match lang {
+                Lang::English => "Creating instance...".to_string(),
+                Lang::Russian => "Создание версии...".to_string(),
+            },
+            LangMessage::Cancel => match lang {
+                Lang::English => "Cancel".to_string(),
+                Lang::Russian => "Отмена".to_string(),
+            },
+            LangMessage::InstanceGenerateErrorOffline => match lang {
+                Lang::English => "Error generating instance: no connection".to_string(),
+                Lang::Russian => "Ошибка создания версии: нет подключения".to_string(),
+            },
+            LangMessage::InstanceGenerateError(e) => match lang {
+                Lang::English => format!("Error generating instance: {}", e),
+                Lang::Russian => format!("Ошибка создания версии: {}", e),
+            },
         }
     }
 }

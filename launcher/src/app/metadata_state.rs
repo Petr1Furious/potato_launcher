@@ -133,35 +133,34 @@ impl MetadataState {
     }
 
     pub fn render_ui(&mut self, ui: &mut egui::Ui, config: &runtime_config::Config) -> bool {
+        let mut need_separator = true;
         match self.status {
             GetStatus::Getting => {
-                ui.label(LangMessage::GettingVersionMetadata.to_string(&config.lang));
+                ui.label(LangMessage::GettingVersionMetadata.to_string(config.lang));
             }
             GetStatus::ReadLocalOffline => {
-                ui.label(LangMessage::NoConnectionToMetadataServer.to_string(&config.lang));
+                ui.label(LangMessage::NoConnectionToMetadataServer.to_string(config.lang));
                 self.render_retry_button(ui, config);
             }
             GetStatus::ReadLocalRemoteError(ref s) => {
-                ui.label(
-                    LangMessage::ErrorGettingRemoteMetadata(s.clone()).to_string(&config.lang),
-                );
+                ui.label(LangMessage::ErrorGettingRemoteMetadata(s.clone()).to_string(config.lang));
                 self.render_retry_button(ui, config);
             }
             GetStatus::ErrorGetting(ref s) => {
-                ui.label(LangMessage::ErrorGettingMetadata(s.clone()).to_string(&config.lang));
+                ui.label(LangMessage::ErrorGettingMetadata(s.clone()).to_string(config.lang));
                 self.render_retry_button(ui, config);
             }
             GetStatus::UpToDate => {
-                return false;
+                need_separator = false;
             }
         }
 
-        true
+        need_separator
     }
 
     fn render_retry_button(&mut self, ui: &mut egui::Ui, config: &runtime_config::Config) {
         if ui
-            .button(LangMessage::Retry.to_string(&config.lang))
+            .button(LangMessage::Retry.to_string(config.lang))
             .clicked()
         {
             self.reset();

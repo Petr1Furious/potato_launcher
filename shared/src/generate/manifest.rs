@@ -1,19 +1,17 @@
 use std::path::Path;
 
-use shared::{
+use crate::{
     files::hash_file,
     paths::{
         get_rel_extra_metadata_path, get_rel_metadata_path, get_rel_versions_dir,
         get_rel_versions_extra_dir,
     },
-    utils::BoxResult,
+    utils::{url_from_rel_path, BoxResult},
     version::{
         version_manifest::{MetadataInfo, VersionInfo},
         version_metadata::VersionMetadata,
     },
 };
-
-use crate::utils::url_from_rel_path;
 
 pub async fn get_version_info(
     work_dir: &Path,

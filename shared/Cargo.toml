@@ -4,6 +4,7 @@ version = "1.0.0"
 edition = "2021"
 
 [dependencies]
+async-trait = "0.1.83"
 dirs = "5.0.1"
 env_logger = "0.11.5"
 flate2 = "1.0.34"
@@ -15,6 +16,7 @@ num_cpus = "1.16.0"
 regex = "1.11.0"
 reqwest = { version = "0.12.8", features = ["rustls-tls", "json", "stream"], default-features = false }
 serde = { version = "1.0.210", features = ["derive"] }
+serde-xml-rs = "0.6.0"
 serde_json = "1.0.128"
 sha1 = "0.10.6"
 tar = "0.4.42"

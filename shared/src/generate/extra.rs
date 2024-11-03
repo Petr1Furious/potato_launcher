@@ -4,22 +4,17 @@ use std::{
     sync::Arc,
 };
 
-use log::info;
-use shared::{
+use crate::{
     files,
     paths::{get_libraries_dir, get_rel_instance_dir, get_versions_extra_dir},
-    progress::{self, ProgressBar as _},
-    utils::BoxResult,
+    progress::{self, NoProgressBar, ProgressBar as _},
+    utils::{url_from_path, url_from_rel_path, BoxResult},
     version::{
         extra_version_metadata::{AuthData, ExtraVersionMetadata, Object},
         version_metadata::Library,
     },
 };
-
-use crate::{
-    progress::TerminalProgressBar,
-    utils::{url_from_path, url_from_rel_path},
-};
+use log::info;
 
 async fn get_objects(
     copy_from: &Path,
@@ -93,9 +88,9 @@ async fn get_extra_forge_libs(
 ) -> BoxResult<Vec<Library>> {
     let libraries_dir = get_libraries_dir(data_dir);
 
-    let progress_bar = Arc::new(TerminalProgressBar::new());
+    let progress_bar = Arc::new(NoProgressBar);
     progress_bar.set_message("Hashing extra forge libraries");
-    let hashes = files::hash_files(extra_forge_libs_paths.to_vec(), progress_bar).await?;
+    let hashes = files::hash_files::<&str>(extra_forge_libs_paths.to_vec(), progress_bar).await?;
 
     let libraries = extra_forge_libs_paths
         .iter()
@@ -156,6 +151,8 @@ pub struct GeneratorResult {
 
     // relative include path -> absolute source path
     pub include_mapping: HashMap<String, PathBuf>,
+
+    pub extra_metadata: ExtraVersionMetadata,
 }
 
 impl ExtraMetadataGenerator {
@@ -183,7 +180,7 @@ impl ExtraMetadataGenerator {
 
     pub async fn generate(&self, work_dir: &Path) -> BoxResult<GeneratorResult> {
         info!(
-            "Generating extra metadata for modpack {}",
+            "Generating extra metadata for instance {}",
             self.version_name
         );
 
@@ -243,11 +240,15 @@ impl ExtraMetadataGenerator {
             .save(&self.version_name, &versions_extra_dir)
             .await?;
 
-        info!("Extra metadata for modpack {} generated", self.version_name);
+        info!(
+            "Extra metadata for instance {} generated",
+            self.version_name
+        );
 
         Ok(GeneratorResult {
             paths_to_copy,
             include_mapping,
+            extra_metadata,
         })
     }
 }

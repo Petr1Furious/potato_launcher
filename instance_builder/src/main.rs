@@ -28,8 +28,8 @@ pub fn get_logs_path(logs_dir: &Path) -> PathBuf {
 }
 
 fn main() -> BoxResult<()> {
-    let matches = Command::new("generate-modpack")
-        .about("Generates modpacks based on a specification file")
+    let matches = Command::new("generate-instance")
+        .about("Generates instances based on a specification file")
         .arg(
             Arg::new("spec_file")
                 .help("Path to the specification file")

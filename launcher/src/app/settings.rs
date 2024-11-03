@@ -64,17 +64,17 @@ impl SettingsState {
         let mut settings_opened = self.settings_opened.clone();
 
         let mut update_status = false;
-        egui::Window::new(LangMessage::Settings.to_string(&config.lang))
+        egui::Window::new(LangMessage::Settings.to_string(config.lang))
             .open(&mut settings_opened)
             .show(ui.ctx(), |ui| {
                 if let Some(picked_java_path) = &self.picked_java_path {
-                    ui.label(LangMessage::SelectedJavaPath.to_string(&config.lang));
+                    ui.label(LangMessage::SelectedJavaPath.to_string(config.lang));
                     ui.code(picked_java_path);
                 } else {
-                    ui.label(LangMessage::NoJavaPath.to_string(&config.lang));
+                    ui.label(LangMessage::NoJavaPath.to_string(config.lang));
                 }
 
-                let button = egui::Button::new(LangMessage::SelectJavaPath.to_string(&config.lang));
+                let button = egui::Button::new(LangMessage::SelectJavaPath.to_string(config.lang));
                 if ui
                     .add_enabled(selected_metadata.is_some(), button)
                     .clicked()
@@ -100,7 +100,7 @@ impl SettingsState {
                     }
                 }
 
-                ui.label(LangMessage::JavaXMX.to_string(&config.lang));
+                ui.label(LangMessage::JavaXMX.to_string(config.lang));
                 ui.text_edit_singleline(self.selected_xmx.as_mut().unwrap());
 
                 if utils::validate_xmx(self.selected_xmx.as_ref().unwrap())
@@ -120,7 +120,7 @@ impl SettingsState {
         let old_close_launcher_after_launch = config.close_launcher_after_launch;
         ui.checkbox(
             &mut config.close_launcher_after_launch,
-            LangMessage::CloseLauncherAfterLaunch.to_string(&config.lang),
+            LangMessage::CloseLauncherAfterLaunch.to_string(config.lang),
         );
         if old_close_launcher_after_launch != config.close_launcher_after_launch {
             config.save();
