@@ -6,12 +6,25 @@ pub async fn exec_custom_command(command: &str) -> anyhow::Result<()> {
     exec_custom_command_in_dir(command, &Path::new(".")).await
 }
 
+// Костыль под винду
 pub async fn exec_custom_command_in_dir(command: &str, dir: &Path) -> anyhow::Result<()> {
     let parts = shell_words::split(command)?;
-    let mut cmd = tokio::process::Command::new(&parts[0]);
-    if parts.len() > 1 {
-        cmd.args(&parts[1..]);
+    let mut modified_parts: Vec<String> = parts.iter().map(|part| part.clone()).collect();
+
+    // Удаляем первые 3 символа у первого и третьего элемента
+    if modified_parts.len() > 0 {
+        modified_parts[0] = modified_parts[0][3..].to_string(); // Удаляем первые 3 символа у первого элемента
     }
+    if modified_parts.len() > 2 {
+        modified_parts[2] = modified_parts[2][3..].to_string(); // Удаляем первые 3 символа у третьего элемента
+    }
+
+
+    let mut cmd = tokio::process::Command::new(&modified_parts[0]);
+    if modified_parts.len() > 1 {
+        cmd.args(&modified_parts[1..]);
+    }
+
     cmd.current_dir(dir);
     let status = cmd.status().await?;
     if !status.success() {
