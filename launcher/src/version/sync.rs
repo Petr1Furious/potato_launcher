@@ -4,9 +4,9 @@ use std::sync::Arc;
 
 use futures::stream::StreamExt;
 use log::{debug, info, warn};
+use rand::SeedableRng as _;
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom as _;
-use rand::SeedableRng as _;
 use shared::adaptive_download::download_files;
 use shared::paths::{
     get_authlib_injector_path, get_instance_dir, get_libraries_dir, get_natives_dir,
