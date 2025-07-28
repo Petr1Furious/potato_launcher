@@ -361,8 +361,8 @@ fn to_abs_path_str(path: &Path) -> anyhow::Result<String> {
     #[cfg(windows)]
     {
         const VERBATIM_PREFIX: &str = r"\\?\";
-        if path_str.starts_with(VERBATIM_PREFIX) {
-            Ok(path_str[VERBATIM_PREFIX.len()..].to_string())
+        if let Some(stripped) = path_str.strip_prefix(VERBATIM_PREFIX) {
+            Ok(stripped.to_string())
         } else {
             Ok(path_str.to_string())
         }

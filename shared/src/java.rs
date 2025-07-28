@@ -119,7 +119,7 @@ fn find_java_in_registry(
     let mut res = Vec::new();
 
     for subkey in subkeys {
-        let key_path = format!("{}\\{}{}", key_name, subkey, subkey_suffix);
+        let key_path = format!("{key_name}\\{subkey}{subkey_suffix}");
         if let Ok(subkey) = hk_local_machine.open_subkey(&key_path) {
             if let Ok(java_dir_value) = subkey.get_value::<String, _>(java_dir_key) {
                 let exe_path = Path::new(&java_dir_value).join("bin").join("java.exe");
