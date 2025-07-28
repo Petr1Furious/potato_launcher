@@ -4,7 +4,9 @@ use std::sync::Arc;
 
 use futures::stream::StreamExt;
 use log::{debug, info, warn};
+use rand::rngs::StdRng;
 use rand::seq::SliceRandom as _;
+use rand::SeedableRng as _;
 use shared::adaptive_download::download_files;
 use shared::paths::{
     get_authlib_injector_path, get_instance_dir, get_libraries_dir, get_natives_dir,
@@ -310,8 +312,8 @@ pub async fn sync_instance(
     let mut download_entries =
         files::get_download_entries(check_entries, progress_bar.clone()).await?;
 
-    let rng = &mut rand::rngs::OsRng;
-    download_entries.shuffle(rng);
+    let mut rng = StdRng::from_os_rng();
+    download_entries.shuffle(&mut rng);
 
     info!("Got {} download entries", download_entries.len());
 

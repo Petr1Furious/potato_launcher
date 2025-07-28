@@ -4,31 +4,31 @@ version = "1.0.0"
 edition = "2021"
 
 [dependencies]
-anyhow = { version = "1.0.94", features = ["backtrace"] }
-async-trait = "0.1.83"
-dirs = "5.0.1"
-env_logger = "0.11.5"
-flate2 = "1.0.34"
-futures = "0.3.30"
+anyhow = { version = "1.0.98", features = ["backtrace"] }
+async-trait = "0.1.88"
+dirs = "6.0.0"
+env_logger = "0.11.8"
+flate2 = "1.1.2"
+futures = "0.3.31"
 lazy_static = "1.5.0"
-log = "0.4.22"
+log = "0.4.27"
 maplit = "1.0.2"
-num_cpus = "1.16.0"
-rand = "0.8.5"
-regex = "1.11.0"
-reqwest = { version = "0.12.12", features = ["rustls-tls", "json", "stream", "gzip"], default-features = false }
-serde = { version = "1.0.210", features = ["derive"] }
-serde-xml-rs = "0.6.0"
-serde_json = "1.0.128"
+num_cpus = "1.17.0"
+rand = "0.9.2"
+regex = "1.11.1"
+reqwest = { version = "0.12.22", features = ["rustls-tls", "json", "stream", "gzip"], default-features = false }
+serde = { version = "1.0.219", features = ["derive"] }
+serde-xml-rs = "0.8.1"
+serde_json = "1.0.141"
 sha1 = "0.10.6"
-tar = "0.4.42"
-thiserror = "1.0.64"
-tokio = { version = "1.40.0", features = ["full"] }
-tokio-util = "0.7.12"
+tar = "0.4.44"
+thiserror = "2.0.12"
+tokio = { version = "1.47.0", features = ["full"] }
+tokio-util = "0.7.15"
 walkdir = "2.5.0"
-which = "6.0.3"
-zip = "2.3.0"
+which = "8.0.0"
+zip = "4.3.0"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["fileapi", "winbase"] }
-winreg = "0.52.0"
+winreg = "0.55.0"

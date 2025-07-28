@@ -4,7 +4,7 @@ use std::{
 };
 
 use log::{debug, info};
-use rand::seq::SliceRandom as _;
+use rand::{SeedableRng as _, rngs::StdRng, seq::SliceRandom as _};
 use shared::{
     adaptive_download::download_files,
     files::{CheckEntry, get_download_entries},
@@ -86,8 +86,8 @@ pub async fn sync_version(
     progress_bar.set_message("Checking files...");
     let mut download_entries = get_download_entries(check_entries, progress_bar.clone()).await?;
 
-    let rng = &mut rand::rngs::OsRng;
-    download_entries.shuffle(rng);
+    let mut rng = StdRng::from_os_rng();
+    download_entries.shuffle(&mut rng);
 
     progress_bar.reset();
     progress_bar.set_message("Downloading files...");

@@ -117,10 +117,10 @@ impl LauncherApp {
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::central_panel(&ctx.style())
-                    .outer_margin(egui::Margin::symmetric(150.0, 100.0))
-                    .inner_margin(egui::Margin::same(30.0))
+                    .outer_margin(egui::epaint::MarginF32::symmetric(150.0, 100.0))
+                    .inner_margin(egui::epaint::MarginF32::same(30.0))
                     .stroke(ctx.style().visuals.widgets.noninteractive.bg_stroke)
-                    .rounding(egui::Rounding::same(10.0)),
+                    .corner_radius(egui::CornerRadius::same(10)),
             )
             .show(ctx, |ui| {
                 self.render_central_elements(ui, ctx);

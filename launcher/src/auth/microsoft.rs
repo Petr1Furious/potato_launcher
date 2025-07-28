@@ -4,10 +4,11 @@ use super::user_info::UserInfo;
 use crate::lang::LangMessage;
 use crate::vendor::minecraft_msa_auth::MinecraftAuthorizationFlow;
 use async_trait::async_trait;
-use oauth2::reqwest::async_http_client;
+use oauth2::basic::BasicClient;
 use oauth2::{
-    AuthUrl, ClientId, DeviceAuthorizationUrl, DeviceCodeErrorResponseType, RefreshToken,
-    RequestTokenError, Scope, StandardDeviceAuthorizationResponse, TokenResponse, TokenUrl,
+    AuthUrl, ClientId, DeviceAuthorizationUrl, DeviceCodeErrorResponseType, EndpointNotSet,
+    EndpointSet, RefreshToken, RequestTokenError, Scope, StandardDeviceAuthorizationResponse,
+    TokenResponse, TokenUrl,
 };
 use reqwest::{Client, Url};
 use serde::Deserialize;
@@ -32,26 +33,30 @@ struct MinecraftProfileResponse {
     name: String,
 }
 
-fn get_oauth_client() -> oauth2::basic::BasicClient {
-    oauth2::basic::BasicClient::new(
-        ClientId::new(MSA_CLIENT_ID.to_string()),
-        None,
-        AuthUrl::new(MSA_DEVICE_CODE_URL.to_string()).unwrap(),
-        Some(TokenUrl::new(MSA_TOKEN_URL.to_string()).unwrap()),
-    )
-    .set_device_authorization_url(
-        DeviceAuthorizationUrl::new(MSA_DEVICE_CODE_URL.to_string()).unwrap(),
-    )
+fn async_http_client() -> Result<reqwest::Client, reqwest::Error> {
+    reqwest::ClientBuilder::new()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+}
+
+fn get_oauth_client()
+-> BasicClient<EndpointSet, EndpointSet, EndpointNotSet, EndpointNotSet, EndpointSet> {
+    BasicClient::new(ClientId::new(MSA_CLIENT_ID.to_string()))
+        .set_auth_uri(AuthUrl::new(MSA_DEVICE_CODE_URL.to_string()).unwrap())
+        .set_token_uri(TokenUrl::new(MSA_TOKEN_URL.to_string()).unwrap())
+        .set_device_authorization_url(
+            DeviceAuthorizationUrl::new(MSA_DEVICE_CODE_URL.to_string()).unwrap(),
+        )
 }
 
 async fn get_ms_token(message_provider: &AuthMessageProvider) -> anyhow::Result<AuthResultData> {
     let client = get_oauth_client();
 
     let details: StandardDeviceAuthorizationResponse = client
-        .exchange_device_code()?
+        .exchange_device_code()
         .add_scope(Scope::new(MSA_SCOPE.to_string()))
         .add_extra_param("response_type", "device_code")
-        .request_async(async_http_client)
+        .request_async(&async_http_client()?)
         .await?;
 
     let code = details.user_code().secret().to_string();
@@ -66,7 +71,7 @@ async fn get_ms_token(message_provider: &AuthMessageProvider) -> anyhow::Result<
     let token = client
         .exchange_device_access_token(&details)
         .request_async(
-            async_http_client,
+            &async_http_client()?,
             tokio::time::sleep,
             Some(Duration::from_secs(60 * 5)),
         )
@@ -121,7 +126,7 @@ impl AuthProvider for MicrosoftAuthProvider {
         let token_response = oauth_client
             .exchange_refresh_token(&RefreshToken::new(refresh_token))
             .add_scope(Scope::new(MSA_SCOPE.to_string()))
-            .request_async(async_http_client)
+            .request_async(&async_http_client()?)
             .await?;
 
         let mc_flow = MinecraftAuthorizationFlow::new(Client::new());

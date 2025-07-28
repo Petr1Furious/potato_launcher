@@ -11,7 +11,7 @@ use shared::progress::ProgressBar;
 
 #[cfg(target_os = "windows")]
 lazy_static::lazy_static! {
-    static ref VERSION_URL: Option<String> = build_config::get_auto_update_base().map(|url| format!("{}/version_windows.txt", url));
+    static ref VERSION_URL: Option<String> = build_config::get_auto_update_base().map(|url| format!("{url}/version_windows.txt"));
 }
 #[cfg(target_os = "linux")]
 lazy_static::lazy_static! {
@@ -19,7 +19,7 @@ lazy_static::lazy_static! {
 }
 #[cfg(target_os = "macos")]
 lazy_static::lazy_static! {
-    static ref VERSION_URL: Option<String> = build_config::get_auto_update_base().map(|url| format!("{}/version_macos.txt", url));
+    static ref VERSION_URL: Option<String> = build_config::get_auto_update_base().map(|url| format!("{url}/version_macos.txt"));
 }
 
 #[cfg(target_os = "windows")]
@@ -36,7 +36,7 @@ lazy_static::lazy_static! {
 }
 
 lazy_static::lazy_static! {
-    static ref UPDATE_URL: Option<String> = build_config::get_auto_update_base().map(|url| format!("{}/{}", url, &*LAUNCHER_FILE_NAME));
+    static ref UPDATE_URL: Option<String> = build_config::get_auto_update_base().map(|url| format!("{url}/{}", &*LAUNCHER_FILE_NAME));
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -137,8 +137,7 @@ pub fn replace_launcher_and_start(new_archive: &[u8]) -> anyhow::Result<()> {
 
     if !app_name.ends_with(".app") {
         return Err(anyhow::Error::msg(format!(
-            "Invalid bundle directory: {:?}",
-            bundle_dir
+            "Invalid bundle directory: {bundle_dir:?}",
         )));
     }
 
