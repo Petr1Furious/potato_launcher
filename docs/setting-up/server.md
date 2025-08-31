@@ -44,7 +44,7 @@ You also need to allow the GitHub Actions pipeline to copy new launcher versions
    ```
 3. Add other users that need access to the newly created group. You'll definitely want to add your nginx user, and possibly your main user, if you want to use it to upload modpacks.
    ```bash
-   usermod -aG nginx potatosmp
+   usermod -aG potatosmp nginx
    ```
    Note that the nginx user can be different in different distros. Look at the top of your `nginx.conf` or in the nginx systemd service to find your user name
 4. Log in as your user and generate an SSH key
