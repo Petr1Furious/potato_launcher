@@ -9,7 +9,7 @@ use rand::rngs::StdRng;
 use rand::seq::SliceRandom as _;
 use shared::adaptive_download::download_files;
 use shared::paths::{
-    get_authlib_injector_path, get_instance_dir, get_libraries_dir, get_natives_dir,
+    get_authlib_injector_path, get_minecraft_dir, get_libraries_dir, get_natives_dir,
 };
 use shared::version::asset_metadata::AssetsMetadata;
 use std::fs;
@@ -31,7 +31,7 @@ const COMPLETION_MARKER_FILE: &str = ".download_complete";
 async fn get_objects_entries(
     extra_version_metadata: &ExtraVersionMetadata,
     force_overwrite: bool,
-    instance_dir: &Path,
+    minecraft_dir: &Path,
 ) -> anyhow::Result<Vec<CheckEntry>> {
     let include = &extra_version_metadata.include;
 
@@ -43,11 +43,11 @@ async fn get_objects_entries(
         let objects_paths = rule
             .objects
             .iter()
-            .map(|object| instance_dir.join(&object.path))
+            .map(|object| minecraft_dir.join(&object.path))
             .collect::<HashSet<_>>();
 
         if rule.overwrite && rule.delete_extra || force_overwrite {
-            let rule_path = instance_dir.join(&rule.path);
+            let rule_path = minecraft_dir.join(&rule.path);
             let files_in_dir = files::get_files_ignore_paths(&rule_path, &used_paths)?;
             for file in files_in_dir {
                 if !objects_paths.contains(&file) {
@@ -60,17 +60,17 @@ async fn get_objects_entries(
             check_entries.extend(objects.iter().map(|object| CheckEntry {
                 url: object.url.clone(),
                 remote_sha1: Some(object.sha1.clone()),
-                path: instance_dir.join(&object.path),
+                path: minecraft_dir.join(&object.path),
             }));
         } else if rule.recursive
-            || !instance_dir.join(&rule.path).exists()
-            || !instance_dir
+            || !minecraft_dir.join(&rule.path).exists()
+            || !minecraft_dir
                 .join(&rule.path)
                 .join(COMPLETION_MARKER_FILE)
                 .exists()
         {
             check_entries.extend(objects.iter().filter_map(|object| {
-                let path = instance_dir.join(&object.path);
+                let path = minecraft_dir.join(&object.path);
                 if !path.exists() {
                     Some(CheckEntry {
                         url: object.url.clone(),
@@ -253,12 +253,12 @@ fn get_authlib_injector_entry(
 
 async fn mark_download_complete(
     version_metadata: &CompleteVersionMetadata,
-    instance_dir: &Path,
+    minecraft_dir: &Path,
 ) -> anyhow::Result<()> {
     let extra = version_metadata.get_extra();
     if let Some(extra) = extra {
         for rule in &extra.include {
-            let path = instance_dir.join(&rule.path);
+            let path = minecraft_dir.join(&rule.path);
             if !rule.overwrite && !rule.recursive && path.is_dir() {
                 let completion_marker_path = path.join(COMPLETION_MARKER_FILE);
                 tokio_fs::write(completion_marker_path, b"").await?;
@@ -280,7 +280,7 @@ pub async fn sync_instance(
 
     let libraries_dir = get_libraries_dir(launcher_dir);
     let natives_dir = get_natives_dir(launcher_dir, version_metadata.get_parent_id());
-    let instance_dir = get_instance_dir(launcher_dir, version_name);
+    let minecraft_dir = get_minecraft_dir(launcher_dir, version_name);
 
     let mut check_entries = vec![];
 
@@ -291,7 +291,7 @@ pub async fn sync_instance(
     check_entries.extend(get_libraries_entries(&libraries, &libraries_dir).await?);
 
     if let Some(extra) = version_metadata.get_extra() {
-        check_entries.extend(get_objects_entries(extra, force_overwrite, &instance_dir).await?);
+        check_entries.extend(get_objects_entries(extra, force_overwrite, &minecraft_dir).await?);
     }
 
     if let Some(authlib_injector) = get_authlib_injector_entry(version_metadata, launcher_dir) {
@@ -328,7 +328,7 @@ pub async fn sync_instance(
 
     extract_natives(&libraries, &libraries_dir, &natives_dir)?;
 
-    mark_download_complete(version_metadata, &instance_dir).await?;
+    mark_download_complete(version_metadata, &minecraft_dir).await?;
 
     Ok(())
 }

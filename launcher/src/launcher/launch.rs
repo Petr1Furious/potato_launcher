@@ -1,7 +1,7 @@
 use log::{debug, warn};
 use maplit::hashmap;
 use shared::paths::{
-    get_authlib_injector_path, get_client_jar_path, get_instance_dir, get_libraries_dir,
+    get_authlib_injector_path, get_client_jar_path, get_minecraft_dir, get_libraries_dir,
     get_logs_dir, get_natives_dir,
 };
 use shared::version::extra_version_metadata::AuthBackend;
@@ -81,7 +81,7 @@ pub async fn launch(
     let auth_provider = auth_backend.as_ref().map(|x| get_auth_provider(x));
 
     let launcher_dir = config.get_launcher_dir();
-    let mut minecraft_dir = get_instance_dir(&launcher_dir, version_metadata.get_name());
+    let mut minecraft_dir = get_minecraft_dir(&launcher_dir, version_metadata.get_name());
     let libraries_dir = get_libraries_dir(&launcher_dir);
     let natives_dir = get_natives_dir(&launcher_dir, version_metadata.get_parent_id());
 

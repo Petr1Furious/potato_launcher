@@ -12,7 +12,7 @@ use shared::loader_generator::forge::{
 };
 use shared::loader_generator::generator::VersionGenerator;
 use shared::loader_generator::vanilla::VanillaGenerator;
-use shared::paths::get_instance_dir;
+use shared::paths::get_minecraft_dir;
 use shared::progress::NoProgressBar;
 use shared::utils::{VANILLA_MANIFEST_URL, get_vanilla_version_info, is_connect_error};
 use shared::version::version_manifest::{VersionInfo, VersionManifest};
@@ -358,7 +358,7 @@ impl NewInstanceState {
             && ui.button("📂").clicked()
         {
             let launcher_dir = config.get_launcher_dir();
-            let _ = open::that(get_instance_dir(&launcher_dir, selected_instance_name));
+            let _ = open::that(get_minecraft_dir(&launcher_dir, selected_instance_name));
         }
 
         if ui.button("-").clicked() {

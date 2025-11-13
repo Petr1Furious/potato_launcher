@@ -346,7 +346,7 @@ impl JavaState {
     }
 
     pub fn cancel_download(&mut self) {
-        if let Some(task) = self.java_download_task.as_ref() {
+        if let Some(task) = self.java_download_task.as_mut() {
             task.cancel();
         }
     }

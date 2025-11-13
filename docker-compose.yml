@@ -1,0 +1,37 @@
+services:
+  backend:
+    image: potato-launcher-backend
+    container_name: potato-launcher-backend
+    build:
+      context: .
+      dockerfile: backend.dockerfile
+    environment:
+      - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET}
+      - ADMIN_SECRET_TOKEN=${ADMIN_SECRET_TOKEN}
+    volumes:
+      - ./backend/:/backend/
+      - ./modpacks-saves:/modpacks-saves
+      - ./generated:/generated
+      - ./workdir:/workdir
+
+  frontend:
+    image: potato-launcher-frontend
+    container_name: potato-launcher-frontend
+    build:
+      context: .
+      dockerfile: frontend.dockerfile
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+  nginx:
+    image: nginx:alpine
+    container_name: potato-launcher-nginx
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./generated:/var/www/generated:ro
+      - ./launcher-bins:/var/www/launcher:ro

@@ -20,7 +20,7 @@ use shared::{
         vanilla::VanillaGenerator,
     },
     paths::{
-        get_extra_metadata_path, get_instance_dir, get_metadata_path, get_versions_dir,
+        get_extra_metadata_path, get_minecraft_dir, get_metadata_path, get_versions_dir,
         get_versions_extra_dir,
     },
     utils::{VANILLA_MANIFEST_URL, get_vanilla_version_info},
@@ -267,8 +267,8 @@ impl VersionsSpec {
             let extra_generator_result = extra_generator.generate(work_dir).await?;
             mapping.extend(extra_generator_result.include_mapping.into_iter().map(
                 |(include_entry, source_path)| {
-                    let instance_dir = get_instance_dir(output_dir, &version.name);
-                    (instance_dir.join(include_entry), source_path)
+                    let minecraft_dir = get_minecraft_dir(output_dir, &version.name);
+                    (minecraft_dir.join(include_entry), source_path)
                 },
             ));
 

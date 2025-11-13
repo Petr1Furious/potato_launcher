@@ -1,0 +1,17 @@
+[project]
+name = "backend"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "aiofiles~=25.1.0",
+    "async-lru~=2.0.5",
+    "fastapi~=0.121.1",
+    "httpx~=0.28.1",
+    "pydantic~=2.12.4",
+    "pydantic-settings~=2.12.0",
+    "pyjwt~=2.10.1",
+    "python-multipart~=0.0.6",
+    "starlette~=0.49.3",
+    "uvicorn~=0.38.0",
+    "websockets~=15.0.1",
+]

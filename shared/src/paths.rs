@@ -39,8 +39,20 @@ pub fn get_instance_dir(data_dir: &Path, version_name: &str) -> PathBuf {
     created(data_dir.join(get_rel_instance_dir(version_name)))
 }
 
+pub fn get_rel_minecraft_dir(version_name: &str) -> PathBuf {
+    get_rel_instance_dir(version_name).join("minecraft")
+}
+
+pub fn get_minecraft_dir(data_dir: &Path, dir_name: &str) -> PathBuf {
+    created(data_dir.join(get_rel_minecraft_dir(dir_name)))
+}
+
 pub fn get_local_instances_path(data_dir: &Path) -> PathBuf {
     parent_created(data_dir.join("local_instances.json"))
+}
+
+pub fn get_instance_meta_path(data_dir: &Path, dir_name: &str) -> PathBuf {
+    parent_created(get_instance_dir(data_dir, dir_name).join("meta.json"))
 }
 
 pub fn get_auth_data_path(data_dir: &Path) -> PathBuf {

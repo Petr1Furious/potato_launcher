@@ -1,7 +1,4 @@
-use crate::{
-    config::{build_config, runtime_config::Config},
-    lang::LangMessage,
-};
+use crate::{config::runtime_config::Config, lang::LangMessage};
 
 use egui::RichText;
 use log::error;
@@ -29,13 +26,14 @@ struct ManifestFetchResult {
 
 fn fetch_manifest<Callback>(
     runtime: &tokio::runtime::Runtime,
+    url: String,
     callback: Callback,
 ) -> BackgroundTask<ManifestFetchResult>
 where
     Callback: FnOnce() + Send + 'static,
 {
     let fut = async move {
-        let result = VersionManifest::fetch(&build_config::get_version_manifest_url()).await;
+        let result = VersionManifest::fetch(&url).await;
         match result {
             Ok(manifest) => ManifestFetchResult {
                 status: FetchStatus::Fetched,
@@ -62,19 +60,20 @@ pub struct ManifestState {
 }
 
 impl ManifestState {
-    fn set_fetch_task(&mut self, runtime: &Runtime, ctx: &egui::Context) {
+    fn set_fetch_task(&mut self, runtime: &Runtime, config: &Config, ctx: &egui::Context) {
         let ctx = ctx.clone();
-        self.fetch_task = Some(fetch_manifest(runtime, move || {
+        let url = config.get_effective_version_manifest_url();
+        self.fetch_task = Some(fetch_manifest(runtime, url.to_string(), move || {
             ctx.request_repaint();
         }));
     }
 
-    pub fn new(runtime: &Runtime, ctx: &egui::Context) -> ManifestState {
+    pub fn new(runtime: &Runtime, ctx: &egui::Context, config: &Config) -> ManifestState {
         let mut result = ManifestState {
             status: FetchStatus::NotFetched,
             fetch_task: None,
         };
-        result.set_fetch_task(runtime, ctx);
+        result.set_fetch_task(runtime, config, ctx);
 
         result
     }
@@ -182,9 +181,9 @@ impl ManifestState {
         }
     }
 
-    pub fn retry_fetch(&mut self, runtime: &Runtime, ctx: &egui::Context) {
+    pub fn retry_fetch(&mut self, runtime: &Runtime, config: &Config, ctx: &egui::Context) {
         self.status = FetchStatus::NotFetched;
-        self.set_fetch_task(runtime, ctx);
+        self.set_fetch_task(runtime, config, ctx);
     }
 
     pub fn online(&self) -> bool {

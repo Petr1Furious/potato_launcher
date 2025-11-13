@@ -150,19 +150,27 @@ pub async fn get_download_entries<M>(
 }
 
 async fn remove_empty_dirs(path: &Path) -> anyhow::Result<()> {
+    let root = path;
+
     for entry in WalkDir::new(path)
         .contents_first(true)
         .into_iter()
         .filter_map(|e| e.ok())
     {
-        if entry.path().is_dir()
-            && fs::read_dir(entry.path())
+        let entry_path = entry.path();
+
+        if entry_path == root {
+            continue;
+        }
+
+        if entry_path.is_dir()
+            && fs::read_dir(entry_path)
                 .await?
                 .next_entry()
                 .await?
                 .is_none()
         {
-            fs::remove_dir(entry.path()).await?;
+            fs::remove_dir(entry_path).await?;
         }
     }
     Ok(())

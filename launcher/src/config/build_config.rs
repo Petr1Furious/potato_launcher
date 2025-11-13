@@ -8,7 +8,7 @@ pub fn get_data_launcher_name() -> String {
     LAUNCHER_NAME.to_string().to_lowercase().replace(" ", "_")
 }
 
-pub fn get_version_manifest_url() -> String {
+pub fn get_default_version_manifest_url() -> String {
     VERSION_MANIFEST_URL.to_string()
 }
 

@@ -16,7 +16,7 @@ use super::{
     colors,
 };
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 enum GetStatus {
     NoMetadata,
     UpToDate,
@@ -36,7 +36,7 @@ fn get_metadata(
     version_info: &VersionInfo,
     data_dir: &Path,
     ctx: &egui::Context,
-    existing_metadata: Option<Arc<CompleteVersionMetadata>>,
+    existing_metadata: Option<(Arc<CompleteVersionMetadata>, GetStatus)>,
 ) -> BackgroundTask<MetadataFetchResult> {
     let version_info = version_info.clone();
     let data_dir = data_dir.to_path_buf();
@@ -44,9 +44,9 @@ fn get_metadata(
     let fut = async move {
         if let Some(metadata) = existing_metadata {
             return MetadataFetchResult {
-                status: GetStatus::UpToDate,
+                status: metadata.1,
                 version_info,
-                metadata: Some(metadata),
+                metadata: Some(metadata.0),
             };
         }
         let result = CompleteVersionMetadata::read_or_download(&version_info, &data_dir).await;
@@ -84,15 +84,13 @@ fn get_metadata(
 }
 
 pub struct MetadataState {
-    status: GetStatus,
     get_task: Option<BackgroundTask<MetadataFetchResult>>,
-    metadata_storage: HashMap<String, Arc<CompleteVersionMetadata>>,
+    metadata_storage: HashMap<String, (Arc<CompleteVersionMetadata>, GetStatus)>,
 }
 
 impl MetadataState {
     pub fn new() -> Self {
         MetadataState {
-            status: GetStatus::NoMetadata,
             get_task: None,
             metadata_storage: HashMap::new(),
         }
@@ -105,7 +103,6 @@ impl MetadataState {
         version_info: &VersionInfo,
         ctx: &egui::Context,
     ) {
-        self.status = GetStatus::NoMetadata;
         let name = version_info.get_name();
         let existing_metadata = self.metadata_storage.get(&name).cloned();
         let launcher_dir = config.get_launcher_dir();
@@ -118,10 +115,16 @@ impl MetadataState {
         ));
     }
 
-    pub fn render_status(&mut self, ui: &mut egui::Ui, config: &Config) -> bool {
+    pub fn render_status(&self, ui: &mut egui::Ui, config: &Config) -> bool {
         let dark_mode = ui.style().visuals.dark_mode;
 
-        ui.label(match self.status {
+        let status = config
+            .selected_instance_name
+            .as_ref()
+            .and_then(|name| self.metadata_storage.get(name).cloned())
+            .map(|(_, status)| status)
+            .unwrap_or(GetStatus::NoMetadata);
+        ui.label(match status {
             GetStatus::NoMetadata => RichText::new(
                 if self.get_task.is_some() {
                     LangMessage::GettingMetadata
@@ -159,17 +162,15 @@ impl MetadataState {
             let result = task.take_result();
             match result {
                 BackgroundTaskResult::Finished(result) => {
-                    self.status = result.status;
                     let name = result.version_info.get_name();
                     if let Some(metadata) = result.metadata {
-                        self.metadata_storage.insert(name, metadata);
+                        self.metadata_storage
+                            .insert(name, (metadata, result.status));
                     } else {
                         self.metadata_storage.remove(&name);
                     }
                 }
-                BackgroundTaskResult::Cancelled => {
-                    self.status = GetStatus::NoMetadata;
-                }
+                BackgroundTaskResult::Cancelled => {}
             }
 
             true
@@ -181,21 +182,25 @@ impl MetadataState {
     pub fn get_version_metadata(&self, config: &Config) -> Option<Arc<CompleteVersionMetadata>> {
         self.metadata_storage
             .get(config.selected_instance_name.as_ref()?)
-            .cloned()
+            .map(|(metadata, _)| metadata.clone())
     }
 
-    pub fn online(&self) -> bool {
-        self.status == GetStatus::UpToDate
+    pub fn online(&self, config: &Config) -> bool {
+        if let Some(selected_instance_name) = config.selected_instance_name.as_ref() {
+            self.metadata_storage
+                .get(selected_instance_name)
+                .map(|(_, status)| *status == GetStatus::UpToDate)
+                .unwrap_or(false)
+        } else {
+            false
+        }
     }
 
     pub fn is_getting(&self) -> bool {
         self.get_task.is_some()
     }
 
-    pub fn reset(&mut self, clear_storage: bool) {
-        self.status = GetStatus::NoMetadata;
-        if clear_storage {
-            self.metadata_storage.clear();
-        }
+    pub fn clear(&mut self) {
+        self.metadata_storage.clear();
     }
 }

@@ -37,7 +37,13 @@ where
             tokio::select! {
                 res = future => {
                     let mut result_lock = result_clone.lock().unwrap();
-                    *result_lock = Some(BackgroundTaskResult::Finished(res));
+                    match *result_lock {
+                        Some(BackgroundTaskResult::Cancelled) => {
+                        }
+                        _ => {
+                            *result_lock = Some(BackgroundTaskResult::Finished(res));
+                        }
+                    }
                     callback();
                 }
                 _ = cancellation_token_clone.cancelled() => {
@@ -65,7 +71,9 @@ where
             .expect("Check has_result before calling take_result")
     }
 
-    pub fn cancel(&self) {
+    pub fn cancel(&mut self) {
+        let mut result_lock = self.result.lock().unwrap();
+        *result_lock = Some(BackgroundTaskResult::Cancelled);
         self.cancellation_token.cancel();
     }
 }

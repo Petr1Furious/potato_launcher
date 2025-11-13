@@ -1,0 +1,13 @@
+# frontend
+node_modules
+dist
+.git
+.gitignore
+Dockerfile
+frontend.dockerfile
+npm-debug.log*
+yarn.lock
+pnpm-lock.yaml
+.vscode
+.idea
+*.log

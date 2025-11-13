@@ -28,3 +28,12 @@ result
 # flatpak
 .flatpak-builder/
 gpg/
+
+# backend
+out/
+
+generated/
+workdir/
+modpacks-saves/
+backend-data/
+launcher-bins/

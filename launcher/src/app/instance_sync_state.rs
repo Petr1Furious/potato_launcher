@@ -130,7 +130,7 @@ impl InstanceSyncState {
         ctx: &egui::Context,
     ) {
         self.instance_sync_progress_bar = Arc::new(GuiProgressBar::new(ctx));
-        if let Some(task) = self.instance_sync_task.take() {
+        if let Some(mut task) = self.instance_sync_task.take() {
             task.cancel();
         }
         self.instance_sync_task = Some(sync_instance(
@@ -307,7 +307,7 @@ impl InstanceSyncState {
     }
 
     pub fn cancel_sync(&mut self) {
-        if let Some(task) = self.instance_sync_task.as_ref() {
+        if let Some(task) = self.instance_sync_task.as_mut() {
             task.cancel();
         }
     }

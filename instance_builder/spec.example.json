@@ -10,8 +10,13 @@
             "loader_name": "forge",
             "loader_version": "47.3.7",
             "include": [
-                {"path": "mods"},
-                {"path": "config", "overwrite": false}
+                {
+                    "path": "mods"
+                },
+                {
+                    "path": "config",
+                    "overwrite": false
+                }
             ],
             "include_from": "<...>/PrismLauncher/instances/Monifactory/minecraft",
             "auth_backend": {

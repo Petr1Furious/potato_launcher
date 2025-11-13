@@ -105,6 +105,12 @@ pub enum LangMessage {
     ReadLocalOffline,
     ErrorGettingMetadata,
     InvalidJavaInstallation,
+    AddManifestUrl,
+    ManifestSource,
+    Default,
+    CustomManifests,
+    EnterManifestUrl,
+    Add,
 }
 
 impl LangMessage {
@@ -480,6 +486,30 @@ impl LangMessage {
             LangMessage::InvalidJavaInstallation => match lang {
                 Lang::English => "Invalid Java Installation".to_string(),
                 Lang::Russian => "Неверная установка Java".to_string(),
+            },
+            LangMessage::AddManifestUrl => match lang {
+                Lang::English => "➕ Add manifest URL".to_string(),
+                Lang::Russian => "➕ Добавить URL-адрес манифеста".to_string(),
+            },
+            LangMessage::ManifestSource => match lang {
+                Lang::English => "Manifest source".to_string(),
+                Lang::Russian => "Источник манифеста".to_string(),
+            },
+            LangMessage::Default => match lang {
+                Lang::English => "Default".to_string(),
+                Lang::Russian => "По умолчанию".to_string(),
+            },
+            LangMessage::CustomManifests => match lang {
+                Lang::English => "Custom manifests:".to_string(),
+                Lang::Russian => "Custom manifests:".to_string(),
+            },
+            LangMessage::EnterManifestUrl => match lang {
+                Lang::English => "Enter manifest URL".to_string(),
+                Lang::Russian => "Введите URL-адрес манифеста".to_string(),
+            },
+            LangMessage::Add => match lang {
+                Lang::English => "Add".to_string(),
+                Lang::Russian => "Добавить".to_string(),
             },
         }
     }

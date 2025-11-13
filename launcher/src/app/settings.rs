@@ -1,10 +1,13 @@
 use super::language_selector::LanguageSelector;
+use super::manifest_state::ManifestState;
+use crate::config::build_config;
 use crate::config::build_config::USE_NATIVE_GLFW_DEFAULT;
 use crate::config::runtime_config::Config;
 use crate::constants::{XMX_DEFAULT, XMX_MAX, XMX_MIN, XMX_STEP};
 use crate::lang::LangMessage;
 use crate::utils;
 use crate::version::complete_version_metadata::CompleteVersionMetadata;
+use crate::version::instance_storage::InstanceStorage;
 use shared::java;
 use tokio::runtime::Runtime;
 
@@ -19,6 +22,8 @@ pub struct SettingsState {
     picked_java_path: Option<String>,
     xmx_slider_value: f64,
     use_native_glfw: bool,
+    add_manifest_opened: bool,
+    new_manifest_url: String,
 }
 
 fn map_xmx_slider_value(value: f64) -> String {
@@ -43,10 +48,20 @@ impl SettingsState {
             picked_java_path: None,
             xmx_slider_value: 0.0,
             use_native_glfw: false,
+            add_manifest_opened: false,
+            new_manifest_url: String::new(),
         }
     }
 
-    pub fn render_settings(&mut self, ui: &mut egui::Ui, config: &mut Config) {
+    pub fn render_settings(
+        &mut self,
+        ui: &mut egui::Ui,
+        config: &mut Config,
+        runtime: &Runtime,
+        manifest_state: &mut ManifestState,
+        ctx: &egui::Context,
+        instance_storage: &InstanceStorage,
+    ) {
         if ui.button("📂").clicked() {
             open::that(config.get_launcher_dir()).unwrap();
         }
@@ -60,10 +75,18 @@ impl SettingsState {
 
         self.language_selector.render_ui(ui, config);
 
-        self.render_settings_window(ui, config);
+        self.render_settings_window(ui, config, runtime, manifest_state, ctx, instance_storage);
     }
 
-    pub fn render_settings_window(&mut self, ui: &mut egui::Ui, config: &mut Config) {
+    pub fn render_settings_window(
+        &mut self,
+        ui: &mut egui::Ui,
+        config: &mut Config,
+        runtime: &Runtime,
+        manifest_state: &mut ManifestState,
+        ctx: &egui::Context,
+        instance_storage: &InstanceStorage,
+    ) {
         let lang = config.lang;
         let mut settings_opened = self.settings_opened;
 
@@ -71,9 +94,148 @@ impl SettingsState {
             .open(&mut settings_opened)
             .show(ui.ctx(), |ui| {
                 self.render_close_launcher_checkbox(ui, config);
+                ui.separator();
+                self.render_manifest_controls(
+                    ui,
+                    config,
+                    runtime,
+                    manifest_state,
+                    ctx,
+                    instance_storage,
+                );
+                self.render_add_manifest_window(ui, config);
             });
 
         self.settings_opened = settings_opened;
+    }
+
+    fn render_manifest_controls(
+        &mut self,
+        ui: &mut egui::Ui,
+        config: &mut Config,
+        runtime: &Runtime,
+        manifest_state: &mut ManifestState,
+        ctx: &egui::Context,
+        instance_storage: &InstanceStorage,
+    ) {
+        if ui
+            .button(LangMessage::AddManifestUrl.to_string(config.lang))
+            .clicked()
+        {
+            self.add_manifest_opened = true;
+            self.new_manifest_url.clear();
+        }
+
+        if !config.extra_version_manifest_urls.is_empty() {
+            ui.separator();
+            let default_url = build_config::get_default_version_manifest_url();
+            let current = config.get_effective_version_manifest_url();
+            let before_selection = current.to_string();
+
+            egui::ComboBox::from_label(LangMessage::ManifestSource.to_string(config.lang))
+                .selected_text(if current == default_url {
+                    LangMessage::Default.to_string(config.lang)
+                } else {
+                    current.to_string()
+                })
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut config.selected_version_manifest_url,
+                        default_url.clone(),
+                        format!(
+                            "{} ({})",
+                            LangMessage::Default.to_string(config.lang),
+                            default_url
+                        ),
+                    );
+                    for url in &config.extra_version_manifest_urls {
+                        ui.selectable_value(
+                            &mut config.selected_version_manifest_url,
+                            url.clone(),
+                            url,
+                        );
+                    }
+                });
+
+            let after_selection = config.get_effective_version_manifest_url();
+            if before_selection != after_selection {
+                config.save();
+                manifest_state.retry_fetch(runtime, config, ctx);
+            }
+        }
+
+        if !config.extra_version_manifest_urls.is_empty() {
+            ui.separator();
+            ui.label(LangMessage::CustomManifests.to_string(config.lang));
+            let mut to_remove: Option<String> = None;
+            for url in &config.extra_version_manifest_urls {
+                ui.horizontal(|ui| {
+                    ui.label(url);
+                    let in_use = instance_storage.count_instances_with_manifest_url(url) > 0;
+                    let delete_enabled = !in_use;
+                    if ui
+                        .add_enabled(delete_enabled, egui::Button::new("🗑"))
+                        .clicked()
+                    {
+                        to_remove = Some(url.clone());
+                    }
+                });
+            }
+            if let Some(url) = to_remove {
+                let before = config.get_effective_version_manifest_url().to_string();
+                config.remove_version_manifest_url(&url);
+                let after = config.get_effective_version_manifest_url();
+                if before != after {
+                    manifest_state.retry_fetch(runtime, config, ctx);
+                }
+            }
+        }
+    }
+
+    fn check_manifest_url(url: &str, config: &Config) -> bool {
+        let trimmed = url.trim();
+        let is_http = trimmed.starts_with("http://") || trimmed.starts_with("https://");
+        let not_default = trimmed != build_config::get_default_version_manifest_url();
+        let not_duplicate = !config
+            .extra_version_manifest_urls
+            .iter()
+            .any(|u| u == trimmed);
+        is_http && not_default && not_duplicate
+    }
+
+    fn render_add_manifest_window(&mut self, ui: &mut egui::Ui, config: &mut Config) {
+        if !self.add_manifest_opened {
+            return;
+        }
+        let mut open = true;
+        egui::Window::new(LangMessage::AddManifestUrl.to_string(config.lang))
+            .open(&mut open)
+            .show(ui.ctx(), |ui| {
+                ui.label(LangMessage::EnterManifestUrl.to_string(config.lang));
+                ui.text_edit_singleline(&mut self.new_manifest_url);
+                ui.horizontal(|ui| {
+                    if ui
+                        .add_enabled(
+                            Self::check_manifest_url(&self.new_manifest_url, config),
+                            egui::Button::new(LangMessage::Add.to_string(config.lang)),
+                        )
+                        .clicked()
+                    {
+                        config.add_version_manifest_url(self.new_manifest_url.clone());
+                        self.new_manifest_url.clear();
+                        self.add_manifest_opened = false;
+                    }
+                    if ui
+                        .button(LangMessage::Cancel.to_string(config.lang))
+                        .clicked()
+                    {
+                        self.add_manifest_opened = false;
+                    }
+                });
+            });
+        if !open {
+            self.add_manifest_opened = false;
+        }
     }
 
     pub fn render_instance_settings(

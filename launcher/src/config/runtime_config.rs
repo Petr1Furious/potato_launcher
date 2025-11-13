@@ -13,6 +13,10 @@ pub struct AuthProfile {
     pub username: String,
 }
 
+fn provide_default_version_manifest_url() -> String {
+    build_config::get_default_version_manifest_url()
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     pub java_paths: HashMap<String, String>,
@@ -24,6 +28,10 @@ pub struct Config {
     pub lang: Lang,
     pub hide_launcher_after_launch: bool,
     pub auth_profiles: HashMap<String, AuthProfile>,
+    #[serde(default)]
+    pub extra_version_manifest_urls: Vec<String>,
+    #[serde(default = "provide_default_version_manifest_url")]
+    pub selected_version_manifest_url: String,
 }
 
 const CONFIG_FILENAME: &str = "config.json";
@@ -53,6 +61,8 @@ impl Config {
             lang: constants::DEFAULT_LANG,
             hide_launcher_after_launch: true,
             auth_profiles: HashMap::new(),
+            extra_version_manifest_urls: Vec::new(),
+            selected_version_manifest_url: build_config::get_default_version_manifest_url(),
         }
     }
 
@@ -79,6 +89,36 @@ impl Config {
             std::fs::create_dir_all(&assets_dir).expect("Failed to create assets directory");
         }
         assets_dir
+    }
+
+    pub fn get_effective_version_manifest_url(&self) -> &str {
+        &self.selected_version_manifest_url
+    }
+
+    pub fn add_version_manifest_url(&mut self, url: String) {
+        let url_trimmed = url.trim().to_string();
+        if url_trimmed.is_empty() {
+            return;
+        }
+        if url_trimmed == build_config::get_default_version_manifest_url() {
+            return;
+        }
+        if !self
+            .extra_version_manifest_urls
+            .iter()
+            .any(|u| u == &url_trimmed)
+        {
+            self.extra_version_manifest_urls.push(url_trimmed);
+            self.save();
+        }
+    }
+
+    pub fn remove_version_manifest_url(&mut self, url: &str) {
+        self.extra_version_manifest_urls.retain(|u| u != url);
+        if self.selected_version_manifest_url == url {
+            self.selected_version_manifest_url = build_config::get_default_version_manifest_url();
+        }
+        self.save();
     }
 
     pub fn get_selected_auth_profile(&self) -> Option<&AuthProfile> {

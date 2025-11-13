@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     files,
-    paths::{get_libraries_dir, get_rel_instance_dir, get_versions_extra_dir},
+    paths::{get_libraries_dir, get_rel_minecraft_dir, get_versions_extra_dir},
     progress::{self, NoProgressBar, ProgressBar as _},
     utils::{url_from_path, url_from_rel_path},
     version::{
@@ -35,7 +35,7 @@ async fn get_objects(
     let mut objects = vec![];
     for (rel_path, hash) in rel_paths.iter().zip(hashes.iter()) {
         let url = url_from_rel_path(
-            &get_rel_instance_dir(version_name).join(rel_path),
+            &get_rel_minecraft_dir(version_name).join(rel_path),
             download_server_base,
         )?;
         objects.push(Object {
@@ -194,7 +194,7 @@ impl ExtraMetadataGenerator {
             let mut include = vec![];
             let mut existing_paths = HashSet::new();
             for rule in include_config.include.iter() {
-                let from = copy_from.join(&rule.path);
+                let from = copy_from.join(Path::new(&rule.path));
 
                 let objects = get_objects(
                     &copy_from,

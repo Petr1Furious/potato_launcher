@@ -54,7 +54,7 @@ impl LauncherApp {
         LauncherApp {
             settings_state: SettingsState::new(),
             auth_state: AuthState::new(ctx, &config),
-            manifest_state: ManifestState::new(&runtime, ctx),
+            manifest_state: ManifestState::new(&runtime, ctx, &config),
             metadata_state: MetadataState::new(),
             java_state: JavaState::new(ctx),
             instance_sync_state: InstanceSyncState::new(ctx),
@@ -73,7 +73,14 @@ impl LauncherApp {
                 ui.add_space(5.0);
                 ui.horizontal(|ui| {
                     let selected_metadata = self.metadata_state.get_version_metadata(&self.config);
-                    self.settings_state.render_settings(ui, &mut self.config);
+                    self.settings_state.render_settings(
+                        ui,
+                        &mut self.config,
+                        &self.runtime,
+                        &mut self.manifest_state,
+                        ctx,
+                        &self.instance_storage,
+                    );
 
                     self.instance_sync_state.render_sync_button(
                         ui,
@@ -84,8 +91,9 @@ impl LauncherApp {
 
                     if ui.button("🔄").clicked() {
                         self.auth_state.reset(&mut self.config, &self.runtime, ctx);
-                        self.manifest_state.retry_fetch(&self.runtime, ctx);
-                        self.metadata_state.reset(true); // just reset the state, not the task
+                        self.manifest_state
+                            .retry_fetch(&self.runtime, &self.config, ctx);
+                        self.metadata_state.clear();
 
                         // metadata is checked after manifest is fetched
                         // java is checked after metadata is fetched
@@ -126,23 +134,42 @@ impl LauncherApp {
     fn render_central_elements(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let (manifest, updated) = self.manifest_state.take_manifest(&mut self.config);
         if let Some(manifest) = manifest {
-            self.instance_storage.set_remote_manifest(Some(manifest));
+            self.instance_sync_state.cancel_sync();
+            let url = self.config.get_effective_version_manifest_url();
+            self.instance_storage.set_remote_manifest(manifest, url);
         }
         if updated {
+            let (local_instance_names, remote_instance_names) = self
+                .instance_storage
+                .get_all_names_for_manifest_url(self.config.get_effective_version_manifest_url());
+            let selected_valid = self
+                .config
+                .selected_instance_name
+                .as_ref()
+                .map(|name| {
+                    local_instance_names.contains(name) || remote_instance_names.contains(name)
+                })
+                .unwrap_or(true);
+            if !selected_valid {
+                self.config.selected_instance_name = None;
+                self.config.save();
+            }
             self.set_metadata_task(ctx);
         }
 
         if let Some(version_info) = self.new_instance_state.take_new_instance() {
             self.runtime.block_on(
                 self.instance_storage
-                    .add_instance(&self.config, version_info),
+                    .add_local_instance(&self.config, version_info),
             );
         }
 
         ui.horizontal(|ui| {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
                 let (local_instance_names, remote_instance_names) =
-                    self.instance_storage.get_all_names();
+                    self.instance_storage.get_all_names_for_manifest_url(
+                        self.config.get_effective_version_manifest_url(),
+                    );
 
                 let mut all_names: HashSet<String> =
                     local_instance_names.clone().into_iter().collect();
@@ -163,7 +190,6 @@ impl LauncherApp {
                             .delete_instance(&self.config, &instance_to_delete),
                     );
                     self.instance_sync_state.reset_status();
-                    self.metadata_state.reset(false);
                 }
 
                 let selected_instance = self.metadata_state.get_version_metadata(&self.config);
@@ -220,7 +246,7 @@ impl LauncherApp {
         if let Some(selected_instance) = self.get_selected_instance(&self.config) {
             if self.metadata_state.update() {
                 if self.manifest_state.online()
-                    && self.metadata_state.online()
+                    && self.metadata_state.online(&self.config)
                     && selected_instance.status == InstanceStatus::UpToDate
                 {
                     self.instance_sync_state.set_up_to_date();
